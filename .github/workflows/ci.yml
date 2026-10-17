@@ -49,13 +49,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "npm"
 
-      - name: Install Frontend Dependencies
-        working-directory: apps/web
+      - name: Install Dependencies
         run: npm install
 
       - name: Type-Check and Build Production Bundle
-        working-directory: apps/web
         run: npm run build
 
   e2e:
@@ -82,14 +81,14 @@ jobs:
           pip install -e packages/ml
           pip install pytest pytest-asyncio pytest-playwright playwright
           playwright install --with-deps chromium
-          cd apps/web && npm install
+          npm install
 
       - name: Run E2E Tests
         env:
           PYTHONPATH: .
         run: |
           python -m uvicorn apps.api.src.main:app --host 127.0.0.1 --port 8000 &
-          cd apps/web && npm run dev -- --host 127.0.0.1 --port 5173 &
+          npm run dev -- --host 127.0.0.1 --port 5173 &
           sleep 6
           pytest tests/test_stage4_auth_playwright.py -v
           pytest tests/test_stage5_dashboard_playwright.py -v
