@@ -6,7 +6,6 @@ Validates:
 3. Alerts CRUD via dashboard UI.
 4. Paper Portfolio live execution: executing 0.1 BTC BUY trade adjusts cash, BTC balance, and logs trade.
 """
-import time
 import uuid
 import requests
 from playwright.sync_api import sync_playwright

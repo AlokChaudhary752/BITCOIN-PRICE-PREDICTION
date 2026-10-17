@@ -24,6 +24,11 @@ class ModelExplainer:
         Explain a single observation (latest live tick).
         Returns top features, shap values, and natural language narrative.
         """
+        if hasattr(self, "feature_names") and self.feature_names:
+            cols = [c for c in self.feature_names if c in X_sample.columns]
+            if len(cols) == len(self.feature_names):
+                X_sample = X_sample[cols]
+
         shap_vals = self.explainer.shap_values(X_sample)
         if isinstance(shap_vals, list):
             vals = shap_vals[0]
@@ -87,6 +92,11 @@ class ModelExplainer:
 
     def get_global_importance(self, X_sample: pd.DataFrame) -> list[dict[str, Any]]:
         """Compute mean absolute SHAP values across sample for Model Lab."""
+        if hasattr(self, "feature_names") and self.feature_names:
+            cols = [c for c in self.feature_names if c in X_sample.columns]
+            if len(cols) == len(self.feature_names):
+                X_sample = X_sample[cols]
+
         shap_vals = self.explainer.shap_values(X_sample)
         if isinstance(shap_vals, list):
             vals = shap_vals[0]

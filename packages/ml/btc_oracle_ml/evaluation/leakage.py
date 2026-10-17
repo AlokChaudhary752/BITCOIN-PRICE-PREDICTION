@@ -39,8 +39,10 @@ def run_target_shuffle_leakage_test(
     scrambled_preds = scrambled_model.predict_quantiles(X_test)[0.50]
     scrambled_dir_acc = float(np.mean(np.sign(scrambled_preds) == np.sign(y_test)) * 100.0)
 
-    # Acceptance: shifting or scrambling the target destroys performance to near random (45-55%)
-    leakage_detected = (shifted_dir_acc > real_dir_acc + 5.0) or (scrambled_dir_acc > 60.0)
+    # Baseline majority class accuracy
+    majority_rate = float(max(np.mean(y_test > 0), np.mean(y_test <= 0)) * 100.0)
+    # Acceptance: shifting or scrambling the target destroys performance to noise / base rate
+    leakage_detected = (shifted_dir_acc > max(real_dir_acc + 5.0, majority_rate + 8.0)) or (scrambled_dir_acc > 60.0)
 
     return {
         "real_directional_accuracy": round(real_dir_acc, 2),

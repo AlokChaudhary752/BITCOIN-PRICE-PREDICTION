@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from btc_oracle_ml.config import DATA_DIR
 from btc_oracle_ml.data.sentiment import FearGreedClient
+from btc_oracle_ml.evaluation.trading_performance import VectorizedBacktestEngine
 from btc_oracle_ml.features.pipeline import FeaturePipeline
 from fastapi import APIRouter
 
@@ -104,122 +105,70 @@ async def run_backtest(req: BacktestRequest):
         # Generate clean synthetic backtest fixture
         dates = pd.date_range("2024-01-01", periods=1000, freq="1h")
         prices = 45000.0 * np.exp(np.cumsum(np.random.normal(0.0001, 0.005, 1000)))
-        df = pd.DataFrame({"close": prices, "open": prices, "high": prices*1.002, "low": prices*0.998, "volume": 100}, index=dates)
+        df = pd.DataFrame(
+            {"close": prices, "open": prices, "high": prices * 1.002, "low": prices * 0.998, "volume": 100},
+            index=dates,
+        )
 
     # Use slice
     df_bt = df.iloc[-720:].copy()  # 30-day hourly walk-forward backtest
     X, _ = pipeline.transform(df_bt)
 
-    cash = req.initial_capital
-    btc_held = 0.0
-    equity = req.initial_capital
-    high_water_mark = req.initial_capital
-    max_dd = 0.0
+    # Vectorized Trading Signal rule: RSI oversold with positive MACD momentum -> BUY (1)
+    rsi_val = X["rsi_14"].shift(1).fillna(50.0)
+    macd_val = X["macd_hist"].shift(1).fillna(0.0)
+    signals = pd.Series(0, index=df_bt.index)
+    signals[(rsi_val < 45) & (macd_val > 0)] = 1
+    signals[rsi_val > 65] = 0
 
-    equity_curve = []
-    trades = []
+    engine = VectorizedBacktestEngine(
+        fee_rate=req.fee_rate,
+        slippage=req.slippage,
+        stop_loss_pct=req.stop_loss_pct,
+        risk_per_trade_pct=req.risk_per_trade_pct,
+    )
+    result = engine.run_backtest(
+        prices=df_bt["close"],
+        signals=signals,
+        initial_capital=req.initial_capital,
+    )
 
-    pos_open_time = None
-    entry_p = 0.0
-    initial_p = float(df_bt["close"].iloc[0])
-
-    for i in range(1, len(df_bt)):
-        ts = df_bt.index[i].to_pydatetime()
-        curr_p = float(df_bt["close"].iloc[i])
-
-        # Benchmark (Buy and Hold) equity
-        bench_eq = req.initial_capital * (curr_p / initial_p)
-
-        # AI Signal rule: RSI oversold with positive MACD momentum -> BUY
-        rsi_val = float(X["rsi_14"].iloc[i - 1])
-        macd_val = float(X["macd_hist"].iloc[i - 1])
-
-        # Entry logic
-        if btc_held == 0.0 and rsi_val < 45 and macd_val > 0:
-            effective_price = curr_p * (1.0 + req.slippage)
-            invest_amount = cash * req.risk_per_trade_pct * 5.0
-            fee = invest_amount * req.fee_rate
-            btc_held = (invest_amount - fee) / effective_price
-            cash -= invest_amount
-            pos_open_time = ts
-            entry_p = effective_price
-
-        # Exit logic: RSI overbought or stop loss hit
-        elif btc_held > 0.0:
-            pos_ret = (curr_p - entry_p) / entry_p
-            is_take_profit = rsi_val > 65
-            is_stop_loss = pos_ret <= -req.stop_loss_pct
-
-            if is_take_profit or is_stop_loss:
-                effective_price = curr_p * (1.0 - req.slippage)
-                gross_proceeds = btc_held * effective_price
-                fee = gross_proceeds * req.fee_rate
-                net_proceeds = gross_proceeds - fee
-                pnl = net_proceeds - (btc_held * entry_p)
-                cash += net_proceeds
-
-                trades.append(BacktestTradeLog(
-                    entry_time=pos_open_time,
-                    exit_time=ts,
-                    side="BUY",
-                    entry_price=round(entry_p, 2),
-                    exit_price=round(effective_price, 2),
-                    return_pct=round(pos_ret * 100.0, 2),
-                    pnl=round(pnl, 2),
-                    reason="Take Profit" if is_take_profit else "Stop Loss",
-                ))
-                btc_held = 0.0
-
-        equity = cash + (btc_held * curr_p)
-        high_water_mark = max(high_water_mark, equity)
-        dd = (high_water_mark - equity) / high_water_mark
-        max_dd = max(max_dd, dd)
-
-        equity_curve.append(EquityPoint(
-            timestamp=ts,
-            strategy_equity=round(equity, 2),
-            benchmark_equity=round(bench_eq, 2),
-            drawdown_pct=round(dd * 100.0, 2),
-        ))
-
-    # Compute institutional stats
-    tot_ret = ((equity - req.initial_capital) / req.initial_capital) * 100.0
-    bench_ret = ((bench_eq - req.initial_capital) / req.initial_capital) * 100.0
-
-    eq_series = pd.Series([p.strategy_equity for p in equity_curve])
-    hourly_rets = eq_series.pct_change().dropna()
-
-    mean_h_ret = float(hourly_rets.mean()) if not hourly_rets.empty else 0.0
-    std_h_ret = float(hourly_rets.std()) if not hourly_rets.empty else 1e-6
-    downside_std = float(hourly_rets[hourly_rets < 0].std()) if len(hourly_rets[hourly_rets < 0]) > 0 else 1e-6
-
-    # Annualize (8760 hours in a year)
-    ann_factor = np.sqrt(8760)
-    sharpe = round((mean_h_ret / std_h_ret) * ann_factor, 2) if std_h_ret > 0 else 0.0
-    sortino = round((mean_h_ret / downside_std) * ann_factor, 2) if downside_std > 0 else 0.0
-    calmar = round((tot_ret / (max_dd * 100.0)), 2) if max_dd > 0 else 1.0
-
-    # Win rate and profit factor
-    winning_trades = [t for t in trades if t.pnl > 0]
-    win_rate = (len(winning_trades) / len(trades) * 100.0) if trades else 0.0
-
-    gross_gains = sum(t.pnl for t in winning_trades)
-    gross_losses = abs(sum(t.pnl for t in trades if t.pnl < 0))
-    profit_factor = round(gross_gains / gross_losses, 2) if gross_losses > 0 else 1.5
+    eq_curve = [
+        EquityPoint(
+            timestamp=pt["timestamp"],
+            strategy_equity=pt["strategy_equity"],
+            benchmark_equity=pt["benchmark_equity"],
+            drawdown_pct=pt["drawdown_pct"],
+        )
+        for pt in result.equity_curve
+    ]
+    trade_logs = [
+        BacktestTradeLog(
+            entry_time=t["entry_time"],
+            exit_time=t["exit_time"],
+            side=t["side"],
+            entry_price=t["entry_price"],
+            exit_price=t["exit_price"],
+            return_pct=t["return_pct"],
+            pnl=t["pnl"],
+            reason=t["reason"],
+        )
+        for t in result.trades
+    ]
 
     return BacktestResponse(
-        initial_capital=req.initial_capital,
-        final_equity=round(equity, 2),
-        total_return_pct=round(tot_ret, 2),
-        benchmark_return_pct=round(bench_ret, 2),
-        cagr_pct=round(tot_ret * 12.0, 2),  # Annualized from 30d
-        sharpe_ratio=sharpe,
-        sortino_ratio=sortino,
-        calmar_ratio=calmar,
-        max_drawdown_pct=round(max_dd * 100.0, 2),
-        win_rate_pct=round(win_rate, 2),
-        profit_factor=profit_factor,
-        total_trades=len(trades),
-        equity_curve=equity_curve,
-        trades=trades,
+        initial_capital=result.initial_capital,
+        final_equity=result.final_equity,
+        total_return_pct=result.total_return_pct,
+        benchmark_return_pct=result.benchmark_return_pct,
+        cagr_pct=result.cagr_pct,
+        sharpe_ratio=result.sharpe_ratio,
+        sortino_ratio=result.sortino_ratio,
+        calmar_ratio=result.calmar_ratio,
+        max_drawdown_pct=result.max_drawdown_pct,
+        win_rate_pct=result.win_rate_pct,
+        profit_factor=result.profit_factor,
+        total_trades=result.total_trades,
+        equity_curve=eq_curve,
+        trades=trade_logs,
     )

@@ -136,6 +136,10 @@ class HorizonForecast(BaseModel):
     signal_level: int
     confidence_level: str
     low_confidence_flag: bool
+    regime_confidence: float = 0.0
+    expected_volatility: float = 0.0
+    primary_predictor: str = "LightGBM"
+    expert_weights: dict[str, float] | None = None
     interval_50: IntervalBand
     interval_90: IntervalBand
     quantiles: QuantilesDict
@@ -166,6 +170,8 @@ class PredictionResponse(BaseModel):
     version: str
     timestamp: datetime
     current_price: float
+    regime_confidence: float = 0.0
+    expected_volatility: float = 0.0
     market_regime: MarketRegime
     primary_signal: dict[str, Any]
     horizons: dict[str, HorizonForecast]

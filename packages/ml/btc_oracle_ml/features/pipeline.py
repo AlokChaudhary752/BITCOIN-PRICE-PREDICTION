@@ -15,6 +15,15 @@ from btc_oracle_ml.features.indicators import (
     compute_stochastic,
     compute_vwap_deviation,
 )
+from btc_oracle_ml.features.macro import (
+    compute_fractional_differentiation,
+    compute_garch_residuals,
+    compute_macro_correlations,
+)
+from btc_oracle_ml.features.microstructure import (
+    compute_cumulative_volume_delta,
+    compute_order_flow_imbalance,
+)
 from btc_oracle_ml.features.volatility import (
     compute_log_returns,
     garman_klass_volatility,
@@ -46,6 +55,14 @@ FEATURE_DESCRIPTIONS: dict[str, str] = {
     "vwap_dev": "Deviation from volume-weighted average price (VWAP)",
     "taker_buy_ratio": "Aggressive market taker buyer vs seller flow ratio",
     "volume_momo_24h": "24-hour trading volume acceleration",
+    "ofi_zscore": "Order Flow Imbalance (OFI) 24h normalized z-score",
+    "cvd_momo_24h": "Cumulative Volume Delta (CVD) aggressive buyer momentum",
+    "garch_conditional_vol": "GARCH(1,1) conditional volatility clustering estimate",
+    "garch_std_residuals": "GARCH(1,1) standardized return innovation residuals",
+    "garch_vol_cluster_ratio": "Volatility clustering acceleration ratio",
+    "macro_sp500_corr": "S&P 500 risk-on asset correlation proxy",
+    "macro_dxy_corr": "US Dollar Index (DXY) inverse currency correlation proxy",
+    "close_frac_diff": "Stationary price via fractional differentiation (d=0.40)",
     "fear_greed_norm": "Crypto market sentiment index (Fear & Greed)",
     "hour_sin": "Intraday diurnal trading cycle (sine component)",
     "hour_cos": "Intraday diurnal trading cycle (cosine component)",
@@ -119,6 +136,34 @@ class FeaturePipeline:
         feats["taker_buy_ratio"] = df.get("taker_buy_ratio", pd.Series(0.5, index=df.index))
         feats["volume_momo_24h"] = df.get("volume_momo_24h", pd.Series(1.0, index=df.index))
 
+        # Order Flow Imbalance (OFI) & Cumulative Volume Delta (CVD)
+        if "taker_buy_base_volume" in df.columns:
+            taker_buy_vol = df["taker_buy_base_volume"].astype(float)
+            taker_sell_vol = np.maximum(volume.astype(float) - taker_buy_vol, 0.0)
+        else:
+            t_ratio = feats["taker_buy_ratio"].astype(float)
+            taker_buy_vol = volume.astype(float) * t_ratio
+            taker_sell_vol = volume.astype(float) * (1.0 - t_ratio)
+
+        _, ofi_z = compute_order_flow_imbalance(taker_buy_vol, taker_sell_vol, window=24)
+        cvd_momo, _ = compute_cumulative_volume_delta(taker_buy_vol, taker_sell_vol, window=24)
+        feats["ofi_zscore"] = ofi_z
+        feats["cvd_momo_24h"] = cvd_momo
+
+        # GARCH(1,1) Volatility Clustering
+        cond_vol, std_res, vol_cluster = compute_garch_residuals(feats["return_1h"])
+        feats["garch_conditional_vol"] = cond_vol
+        feats["garch_std_residuals"] = std_res
+        feats["garch_vol_cluster_ratio"] = vol_cluster
+
+        # Macro-regime Correlations (S&P 500 & DXY)
+        sp500_corr, dxy_corr = compute_macro_correlations(feats["return_1h"], window=168)
+        feats["macro_sp500_corr"] = sp500_corr
+        feats["macro_dxy_corr"] = dxy_corr
+
+        # Fractional Differentiation (Stationary price memory d=0.40)
+        feats["close_frac_diff"] = compute_fractional_differentiation(close, d=0.40)
+
         # Sentiment
         feats["fear_greed_norm"] = df.get("fear_greed_norm", pd.Series(0.5, index=df.index))
 
@@ -143,7 +188,7 @@ class FeaturePipeline:
         # Keep only defined feature columns
         X = feats[self.feature_names].copy()
 
-        # Handle NaNs from rolling warmup by clipping/filling
-        X = X.ffill().bfill()
+        # Handle NaNs from rolling warmup by causal forward fill then zero fill
+        X = X.ffill().fillna(0.0)
 
         return X, y_dict

@@ -43,10 +43,16 @@ async def test_forecast_endpoints(client: AsyncClient):
     assert f_resp.status_code == 200
     f_data = f_resp.json()
     assert "current_price" in f_data
+    assert "regime_confidence" in f_data
+    assert "expected_volatility" in f_data
     assert "market_regime" in f_data
     assert "primary_signal" in f_data
+    assert "regime_confidence" in f_data["primary_signal"]
+    assert "expected_volatility" in f_data["primary_signal"]
     assert "horizons" in f_data
     assert "24h" in f_data["horizons"]
+    assert "regime_confidence" in f_data["horizons"]["24h"]
+    assert "expected_volatility" in f_data["horizons"]["24h"]
     assert "narrative" in f_data["explanation"]
 
     # All horizons
@@ -55,6 +61,8 @@ async def test_forecast_endpoints(client: AsyncClient):
     all_data = all_resp.json()
     for h in ["1h", "4h", "24h", "7d", "30d"]:
         assert h in all_data
+        assert "regime_confidence" in all_data[h]
+        assert "expected_volatility" in all_data[h]
 
     # Model performance vs baselines
     perf_resp = await client.get("/api/v1/forecast/models/performance")

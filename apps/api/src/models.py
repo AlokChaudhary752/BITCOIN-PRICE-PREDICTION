@@ -83,6 +83,8 @@ class Prediction(Base):
     signal = Column(String(32), nullable=False)
     signal_level = Column(Integer, nullable=False)
     confidence_level = Column(String(32), nullable=False)
+    regime_confidence = Column(Float, nullable=True, default=50.0)
+    expected_volatility = Column(Float, nullable=True, default=2.0)
 
     # Prediction intervals
     interval_50_lower = Column(Float, nullable=False)

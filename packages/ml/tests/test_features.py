@@ -74,3 +74,55 @@ def test_technical_indicators(sample_ohlcv):
 
 def test_feature_causality_invariance(sample_ohlcv):
     assert verify_feature_causality(sample_ohlcv)
+
+
+def test_microstructure_and_macro_features(sample_ohlcv):
+    from btc_oracle_ml.features.macro import (
+        compute_fractional_differentiation,
+        compute_garch_residuals,
+        compute_macro_correlations,
+    )
+    from btc_oracle_ml.features.microstructure import (
+        compute_cumulative_volume_delta,
+        compute_order_flow_imbalance,
+    )
+    from btc_oracle_ml.features.pipeline import FeaturePipeline
+    from btc_oracle_ml.features.volatility import compute_log_returns
+
+    taker_buy = sample_ohlcv["taker_buy_base_volume"]
+    taker_sell = sample_ohlcv["volume"] - taker_buy
+    ofi, ofi_z = compute_order_flow_imbalance(taker_buy, taker_sell, window=12)
+    assert len(ofi) == len(sample_ohlcv)
+    assert not ofi_z.isna().all()
+
+    cvd_momo, cvd_accel = compute_cumulative_volume_delta(taker_buy, taker_sell, window=12)
+    assert len(cvd_momo) == len(sample_ohlcv)
+    assert (cvd_momo >= -1.0).all() and (cvd_momo <= 1.0).all()
+
+    rets = compute_log_returns(sample_ohlcv["close"], 1)
+    cond_vol, std_res, vol_cluster = compute_garch_residuals(rets)
+    assert (cond_vol > 0).all()
+    assert len(std_res) == len(sample_ohlcv)
+
+    sp_corr, dxy_corr = compute_macro_correlations(rets, window=24)
+    assert len(sp_corr) == len(sample_ohlcv)
+    assert len(dxy_corr) == len(sample_ohlcv)
+
+    fd = compute_fractional_differentiation(sample_ohlcv["close"], d=0.40)
+    assert len(fd) == len(sample_ohlcv)
+
+    # Test full pipeline integration
+    pipeline = FeaturePipeline()
+    X, y_dict = pipeline.transform(sample_ohlcv)
+    for expected_col in [
+        "ofi_zscore",
+        "cvd_momo_24h",
+        "garch_conditional_vol",
+        "garch_std_residuals",
+        "garch_vol_cluster_ratio",
+        "macro_sp500_corr",
+        "macro_dxy_corr",
+        "close_frac_diff",
+    ]:
+        assert expected_col in X.columns
+        assert not X[expected_col].isna().any()

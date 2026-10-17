@@ -69,7 +69,18 @@ class QuantileLGBM:
         raw_preds = np.zeros((len(X), len(self.quantiles)))
         for i, q in enumerate(self.quantiles):
             model = self.models[q]
-            raw_preds[:, i] = model.predict(X)
+            X_in = X
+            if isinstance(X, pd.DataFrame):
+                if hasattr(model, "booster_") and model.booster_ is not None:
+                    booster_cols = model.booster_.feature_name()
+                    if booster_cols and all(c in X.columns for c in booster_cols):
+                        X_in = X[booster_cols]
+                elif hasattr(model, "feature_name_") and model.feature_name_:
+                    cols = [c for c in model.feature_name_ if c in X.columns]
+                    if len(cols) == len(model.feature_name_):
+                        X_in = X[cols]
+
+            raw_preds[:, i] = model.predict(X_in)
 
         # Monotonic sorting along the quantile axis to prevent quantile crossing
         sorted_preds = np.sort(raw_preds, axis=1)

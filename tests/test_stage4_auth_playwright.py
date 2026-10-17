@@ -10,10 +10,8 @@ Validates:
 """
 import time
 import uuid
-import subprocess
 import requests
-import pytest
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright
 
 API_URL = "http://127.0.0.1:8000"
 WEB_URL = "http://127.0.0.1:5173"

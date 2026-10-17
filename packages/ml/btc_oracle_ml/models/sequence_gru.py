@@ -183,6 +183,13 @@ class SequenceGRUModel:
             return {q: zeros for q in self.quantiles}
 
         self.net.eval()
+        if hasattr(self, "feature_names_") and self.feature_names_:
+            cols = [c for c in self.feature_names_ if c in X.columns]
+            if len(cols) == len(self.feature_names_):
+                X = X[cols]
+        elif self.means is not None and X.shape[1] > len(self.means):
+            X = X.iloc[:, :len(self.means)]
+
         X_arr = X.values.astype(np.float32)
         X_norm = (X_arr - self.means) / self.stds
 

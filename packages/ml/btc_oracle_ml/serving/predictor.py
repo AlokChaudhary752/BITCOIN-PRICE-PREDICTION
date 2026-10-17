@@ -80,7 +80,7 @@ class BTCOraclePredictor:
         else:
             regime_label, state_probs, regime_conf = REGIME_RANGING, np.array([0.5, 0.3, 0.2]), 0.5
 
-        # Multi-horizon probabilistic forecasts
+        # Multi-horizon probabilistic forecasts with Regime-Conditional Router
         horizon_forecasts: dict[str, Any] = {}
         for h_name, ensemble in self.ensembles.items():
             fc = ensemble.predict_probabilistic(
@@ -89,6 +89,8 @@ class BTCOraclePredictor:
                 regime_label=regime_label,
                 current_vol=current_vol,
                 vol_95th_percentile=self.vol_95th,
+                regime_probs=state_probs,
+                regime_confidence=regime_conf,
             )
             horizon_forecasts[h_name] = fc
 
@@ -103,6 +105,8 @@ class BTCOraclePredictor:
             "version": self.version,
             "timestamp": df_recent.index[-1].isoformat(),
             "current_price": current_price,
+            "regime_confidence": round(regime_conf * 100.0, 1),
+            "expected_volatility": primary_24h.get("expected_volatility", round(current_vol * 100.0, 2)),
             "market_regime": {
                 "label": regime_label,
                 "confidence": round(regime_conf * 100.0, 1),
@@ -121,6 +125,9 @@ class BTCOraclePredictor:
                 "agreement_score": primary_24h["agreement_score"],
                 "confidence_level": primary_24h["confidence_level"],
                 "low_confidence_flag": primary_24h["low_confidence_flag"],
+                "regime_confidence": round(regime_conf * 100.0, 1),
+                "expected_volatility": primary_24h.get("expected_volatility", round(current_vol * 100.0, 2)),
+                "primary_predictor": primary_24h.get("primary_predictor", "LightGBM"),
             },
             "horizons": horizon_forecasts,
             "explanation": {
