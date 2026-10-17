@@ -3,17 +3,18 @@ SQLAlchemy 2 Data Models.
 Institutional audit logs, refresh token families, probabilistic predictions, and portfolios.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import (
-    Column,
-    String,
     Boolean,
-    Float,
-    Integer,
+    Column,
     DateTime,
+    Float,
     ForeignKey,
-    Text,
     Index,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 
@@ -21,7 +22,7 @@ from apps.api.src.database import Base
 
 
 def get_utc_now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class User(Base):

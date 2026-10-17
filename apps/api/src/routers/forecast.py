@@ -2,22 +2,22 @@
 Forecast and Model Inference Router.
 Serves live probabilistic predictions, calibration diagrams, SHAP attributions, and drift metrics.
 """
-from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional
 import json
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from datetime import UTC, datetime
+
 import pandas as pd
+from btc_oracle_ml.config import DATA_DIR, REPORTS_DIR
+from btc_oracle_ml.serving.predictor import BTCOraclePredictor
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.src.database import get_db
 from apps.api.src.models import Prediction
 from apps.api.src.schemas import (
-    PredictionResponse,
     PredictionHistoryItem,
+    PredictionResponse,
 )
-from btc_oracle_ml.config import REPORTS_DIR, DATA_DIR
-from btc_oracle_ml.serving.predictor import BTCOraclePredictor
 
 router = APIRouter(prefix="/forecast", tags=["Forecast Engine"])
 
@@ -84,7 +84,7 @@ async def get_all_horizons():
     return forecast_data["horizons"]
 
 
-@router.get("/predictions/history", response_model=List[PredictionHistoryItem])
+@router.get("/predictions/history", response_model=list[PredictionHistoryItem])
 async def get_prediction_history(
     limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
@@ -191,7 +191,7 @@ async def get_drift_monitors():
         "drift_detected": False,
         "features_monitored": 27,
         "rolling_error_drift_pct": -0.015,
-        "last_calibration_check": datetime.now(timezone.utc).isoformat(),
+        "last_calibration_check": datetime.now(UTC).isoformat(),
         "status": "HEALTHY",
     }
 

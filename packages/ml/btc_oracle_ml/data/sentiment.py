@@ -3,11 +3,10 @@ Alternative.me Fear and Greed Index Ingestion.
 Historical daily index scaled to hourly series.
 """
 import logging
-from typing import Optional
-import pandas as pd
-import httpx
 
-from btc_oracle_ml.config import FEAR_GREED_URL, DATA_DIR
+import httpx
+import pandas as pd
+from btc_oracle_ml.config import DATA_DIR, FEAR_GREED_URL
 
 logger = logging.getLogger(__name__)
 

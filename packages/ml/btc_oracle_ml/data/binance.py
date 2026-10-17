@@ -2,13 +2,12 @@
 Binance Public REST API Ingestion for BTCUSDT 1h OHLCV.
 Requires no API key. Includes idempotent incremental backfill and gap checks.
 """
-import time
 import logging
-from datetime import datetime, timezone
-from typing import Optional, List
-import pandas as pd
-import httpx
+import time
+from datetime import UTC, datetime
 
+import httpx
+import pandas as pd
 from btc_oracle_ml.config import BINANCE_KLINES_URL, DATA_DIR
 
 logger = logging.getLogger(__name__)
@@ -41,9 +40,9 @@ class BinanceDataClient:
     def fetch_klines_batch(
         self,
         start_time_ms: int,
-        end_time_ms: Optional[int] = None,
+        end_time_ms: int | None = None,
         limit: int = 1000,
-    ) -> List[list]:
+    ) -> list[list]:
         """Fetch a single batch of klines from Binance."""
         params = {
             "symbol": self.symbol,
@@ -63,7 +62,7 @@ class BinanceDataClient:
     def backfill_history(
         self,
         start_dt: datetime,
-        end_dt: Optional[datetime] = None,
+        end_dt: datetime | None = None,
         progress_cb=None,
     ) -> pd.DataFrame:
         """
@@ -71,7 +70,7 @@ class BinanceDataClient:
         Idempotent: merges with existing local cache without duplicates.
         """
         if end_dt is None:
-            end_dt = datetime.now(timezone.utc)
+            end_dt = datetime.now(UTC)
 
         start_ms = int(start_dt.timestamp() * 1000)
         end_ms = int(end_dt.timestamp() * 1000)
@@ -89,7 +88,7 @@ class BinanceDataClient:
         all_rows = []
         curr_start = start_ms
 
-        logger.info(f"Fetching Binance candles from {datetime.fromtimestamp(curr_start/1000, tz=timezone.utc)} to {end_dt}")
+        logger.info(f"Fetching Binance candles from {datetime.fromtimestamp(curr_start/1000, tz=UTC)} to {end_dt}")
         while curr_start < end_ms:
             try:
                 batch = self.fetch_klines_batch(curr_start, end_ms, limit=1000)
@@ -119,7 +118,7 @@ class BinanceDataClient:
         else:
             raise RuntimeError("No data fetched and no cached data available.")
 
-    def _parse_klines(self, raw_rows: List[list]) -> pd.DataFrame:
+    def _parse_klines(self, raw_rows: list[list]) -> pd.DataFrame:
         """Parse raw Binance JSON rows into typed DataFrame."""
         df = pd.DataFrame(raw_rows, columns=BINANCE_COLUMNS)
         df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)

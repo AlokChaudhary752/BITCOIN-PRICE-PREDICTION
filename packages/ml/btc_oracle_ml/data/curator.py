@@ -4,15 +4,15 @@ Performs data quality checks (duplicates, gaps, outliers) and computes dataset h
 """
 import hashlib
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Tuple, Dict, Any
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import numpy as np
 import pandas as pd
-
 from btc_oracle_ml.config import DATA_DIR
 from btc_oracle_ml.data.binance import BinanceDataClient
-from btc_oracle_ml.data.sentiment import FearGreedClient
 from btc_oracle_ml.data.onchain import OnChainClient
+from btc_oracle_ml.data.sentiment import FearGreedClient
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class DataCurator:
         raw_bytes = df.to_json(orient="records", date_format="iso").encode("utf-8")
         return hashlib.sha256(raw_bytes).hexdigest()
 
-    def validate_quality(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def validate_quality(self, df: pd.DataFrame) -> dict[str, Any]:
         """
         Validate data quality:
         - Check for duplicate timestamps
@@ -94,7 +94,7 @@ class DataCurator:
 
         return reindexed
 
-    def build_or_load_dataset(self, years: float = 3.0, force_refresh: bool = False) -> Tuple[pd.DataFrame, str]:
+    def build_or_load_dataset(self, years: float = 3.0, force_refresh: bool = False) -> tuple[pd.DataFrame, str]:
         """
         Assemble the complete 3-year hourly dataset with OHLCV, sentiment, and on-chain features.
         Returns (DataFrame, content_hash).
@@ -110,7 +110,7 @@ class DataCurator:
                 logger.warning(f"Error loading master dataset cache: {e}")
 
         # Ingest Binance 1h candles
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start_time = now - timedelta(days=int(years * 365.25))
 
         try:

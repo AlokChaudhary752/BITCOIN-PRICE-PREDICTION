@@ -3,20 +3,19 @@ Purged and Embargoed Walk-Forward Cross-Validation.
 Guarantees zero target leakage and prevents serial correlation bias across train/test splits.
 """
 import logging
-from typing import Dict, List, Any
+from typing import Any
+
 import numpy as np
 import pandas as pd
-
 from btc_oracle_ml.config import (
     HORIZONS,
-    WF_TRAIN_WINDOW_HOURS,
-    WF_STEP_HOURS,
     WF_EMBARGO_HOURS,
+    WF_STEP_HOURS,
+    WF_TRAIN_WINDOW_HOURS,
 )
-from btc_oracle_ml.models.quantile_lgbm import QuantileLGBM
-from btc_oracle_ml.models.sequence_gru import SequenceGRUModel
-from btc_oracle_ml.models.conformal import ConformalCalibrator
 from btc_oracle_ml.evaluation.metrics import evaluate_forecasts
+from btc_oracle_ml.models.conformal import ConformalCalibrator
+from btc_oracle_ml.models.quantile_lgbm import QuantileLGBM
 
 logger = logging.getLogger(__name__)
 
@@ -41,23 +40,22 @@ class WalkForwardValidator:
         prices: pd.Series,
         horizon_name: str,
         n_folds: int = 4,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Executes purged & embargoed walk-forward evaluation.
         """
         horizon_hours = HORIZONS[horizon_name]
         total_len = len(X)
-        fold_results: List[Dict[str, Any]] = []
+        fold_results: list[dict[str, Any]] = []
 
-        all_y_true: List[float] = []
-        all_pred_q: Dict[float, List[float]] = {0.05: [], 0.25: [], 0.50: [], 0.75: [], 0.95: []}
-        all_curr_prices: List[float] = []
-        all_actual_prices: List[float] = []
+        all_y_true: list[float] = []
+        all_pred_q: dict[float, list[float]] = {0.05: [], 0.25: [], 0.50: [], 0.75: [], 0.95: []}
+        all_curr_prices: list[float] = []
+        all_actual_prices: list[float] = []
 
         # Determine start index for first test fold
         test_start_idx = total_len - (n_folds * self.step)
-        if test_start_idx < self.train_window:
-            test_start_idx = self.train_window
+        test_start_idx = max(test_start_idx, self.train_window)
 
         logger.info(f"Running Walk-Forward validation for horizon={horizon_name} across {n_folds} folds...")
 

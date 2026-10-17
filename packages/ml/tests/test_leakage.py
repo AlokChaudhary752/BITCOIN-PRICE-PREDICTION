@@ -4,10 +4,8 @@ Requirements: shifting the target forward must destroy performance.
 """
 import numpy as np
 import pandas as pd
-import pytest
-
-from btc_oracle_ml.features.pipeline import FeaturePipeline
 from btc_oracle_ml.evaluation.leakage import run_target_shuffle_leakage_test
+from btc_oracle_ml.features.pipeline import FeaturePipeline
 
 
 def test_target_shift_leakage_destruction():

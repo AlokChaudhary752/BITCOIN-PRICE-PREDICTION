@@ -4,10 +4,8 @@ Verifies that features are strictly backward-looking and that shifting the targe
 """
 import numpy as np
 import pandas as pd
-import pytest
-
-from btc_oracle_ml.models.quantile_lgbm import QuantileLGBM
 from btc_oracle_ml.features.pipeline import FeaturePipeline
+from btc_oracle_ml.models.quantile_lgbm import QuantileLGBM
 
 
 def run_target_shuffle_leakage_test(

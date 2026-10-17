@@ -2,24 +2,24 @@
 SHAP Explanations and Plain-English Institutional Narrative Generation.
 Extracts local feature attributions and translates them into transparent executive summaries.
 """
-from typing import Dict, List, Any
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import shap
-
 from btc_oracle_ml.features.pipeline import FEATURE_DESCRIPTIONS
 
 
 class ModelExplainer:
     """Computes SHAP values and generates institutional plain-English narratives."""
 
-    def __init__(self, lgbm_model, feature_names: List[str]):
+    def __init__(self, lgbm_model, feature_names: list[str]):
         self.feature_names = feature_names
         # Create TreeExplainer on median quantile (q50) model
         median_model = lgbm_model.models[0.50]
         self.explainer = shap.TreeExplainer(median_model)
 
-    def explain_prediction(self, X_sample: pd.DataFrame) -> Dict[str, Any]:
+    def explain_prediction(self, X_sample: pd.DataFrame) -> dict[str, Any]:
         """
         Explain a single observation (latest live tick).
         Returns top features, shap values, and natural language narrative.
@@ -58,7 +58,7 @@ class ModelExplainer:
             "plain_english_narrative": narrative,
         }
 
-    def _generate_narrative(self, drivers: List[Dict[str, Any]]) -> str:
+    def _generate_narrative(self, drivers: list[dict[str, Any]]) -> str:
         """Synthesize natural institutional prose from top positive and negative drivers."""
         bullish = [d for d in drivers if d["direction"] == "bullish"]
         bearish = [d for d in drivers if d["direction"] == "bearish"]
@@ -85,7 +85,7 @@ class ModelExplainer:
         narrative = "; ".join(clauses)
         return narrative[0].upper() + narrative[1:] + "."
 
-    def get_global_importance(self, X_sample: pd.DataFrame) -> List[Dict[str, Any]]:
+    def get_global_importance(self, X_sample: pd.DataFrame) -> list[dict[str, Any]]:
         """Compute mean absolute SHAP values across sample for Model Lab."""
         shap_vals = self.explainer.shap_values(X_sample)
         if isinstance(shap_vals, list):

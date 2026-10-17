@@ -2,21 +2,21 @@
 Security, Argon2 Hashing, JWT Token Rotation, and RBAC.
 Enforces institutional security: token family reuse revocation, httpOnly cookies, Argon2.
 """
-import secrets
 import hashlib
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Tuple
-from fastapi import Request, HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.src.config import settings
 from apps.api.src.database import get_db
-from apps.api.src.models import User, RefreshToken, AuditLog
+from apps.api.src.models import AuditLog, RefreshToken, User
 
 ph = PasswordHasher()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
@@ -43,10 +43,10 @@ def verify_password(password: str, hashed: str) -> bool:
 # JWT ACCESS & REFRESH TOKENS
 # ==========================================
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create short-lived JWT access token (15 mins)."""
     to_encode = data.copy()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire, "iat": now})
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
@@ -62,13 +62,13 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-async def issue_token_family(user_id: str, db: AsyncSession) -> Tuple[str, str]:
+async def issue_token_family(user_id: str, db: AsyncSession) -> tuple[str, str]:
     """Issue a new access token and a root refresh token in a new token family."""
     access_token = create_access_token({"sub": user_id})
     raw_refresh = generate_refresh_token()
     family_id = secrets.token_hex(16)
     token_hash = hash_token(raw_refresh)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     token_rec = RefreshToken(
         user_id=user_id,
@@ -83,7 +83,7 @@ async def issue_token_family(user_id: str, db: AsyncSession) -> Tuple[str, str]:
     return access_token, raw_refresh
 
 
-async def rotate_refresh_token(raw_token: str, db: AsyncSession, request: Request) -> Tuple[str, str, str]:
+async def rotate_refresh_token(raw_token: str, db: AsyncSession, request: Request) -> tuple[str, str, str]:
     """
     Rotate refresh token with Token Family Reuse Detection.
     If a previously revoked token is presented, revoke the entire token family immediately.
@@ -126,8 +126,8 @@ async def rotate_refresh_token(raw_token: str, db: AsyncSession, request: Reques
         )
 
     # Check expiration
-    now = datetime.now(timezone.utc)
-    if token_rec.expires_at.replace(tzinfo=timezone.utc) < now:
+    now = datetime.now(UTC)
+    if token_rec.expires_at.replace(tzinfo=UTC) < now:
         token_rec.is_revoked = True
         await db.commit()
         raise HTTPException(
@@ -162,7 +162,7 @@ async def rotate_refresh_token(raw_token: str, db: AsyncSession, request: Reques
 # ==========================================
 
 async def get_current_user(
-    token: Optional[str] = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """Dependency returning authenticated user from Bearer token."""

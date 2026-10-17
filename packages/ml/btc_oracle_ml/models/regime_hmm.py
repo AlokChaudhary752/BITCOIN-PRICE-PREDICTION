@@ -6,12 +6,15 @@ Classifies market state into:
 2: High Volatility / Crash (Elevated dispersion, erratic flow)
 """
 import logging
-from typing import Tuple, Dict, Any
+
 import numpy as np
 import pandas as pd
+from btc_oracle_ml.config import (
+    REGIME_HIGH_VOLATILITY,
+    REGIME_RANGING,
+    REGIME_TRENDING_BULL,
+)
 from hmmlearn.hmm import GaussianHMM
-
-from btc_oracle_ml.config import REGIME_LABELS, REGIME_RANGING, REGIME_TRENDING_BULL, REGIME_HIGH_VOLATILITY
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +30,7 @@ class RegimeHMM:
             n_iter=100,
             random_state=random_state,
         )
-        self.state_map: Dict[int, str] = {}
+        self.state_map: dict[int, str] = {}
         self.is_fitted = False
 
     def fit(self, returns: pd.Series, vol: pd.Series) -> "RegimeHMM":
@@ -65,7 +68,7 @@ class RegimeHMM:
         logger.info(f"HMM fitted. State mapping: {self.state_map}")
         return self
 
-    def predict_regime(self, returns: pd.Series, vol: pd.Series) -> Tuple[str, np.ndarray, float]:
+    def predict_regime(self, returns: pd.Series, vol: pd.Series) -> tuple[str, np.ndarray, float]:
         """
         Returns:
         - current_regime_label (str)

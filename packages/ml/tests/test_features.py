@@ -4,21 +4,17 @@ Unit tests for Feature Pipeline and Causal Integrity.
 import numpy as np
 import pandas as pd
 import pytest
-
-from btc_oracle_ml.features.volatility import (
-    compute_log_returns,
-    parkinson_volatility,
-    garman_klass_volatility,
-)
-from btc_oracle_ml.features.indicators import (
-    compute_rsi,
-    compute_macd,
-    compute_bollinger_bands,
-    compute_atr,
-    compute_vwap_deviation,
-)
-from btc_oracle_ml.features.pipeline import FeaturePipeline
 from btc_oracle_ml.evaluation.leakage import verify_feature_causality
+from btc_oracle_ml.features.indicators import (
+    compute_atr,
+    compute_bollinger_bands,
+    compute_macd,
+    compute_rsi,
+)
+from btc_oracle_ml.features.volatility import (
+    garman_klass_volatility,
+    parkinson_volatility,
+)
 
 
 @pytest.fixture

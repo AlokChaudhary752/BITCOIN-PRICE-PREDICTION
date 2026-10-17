@@ -3,11 +3,11 @@ Mempool.space & On-chain Network Metrics Ingestion.
 Extracts fee rates, mempool congestion, and network signals.
 """
 import logging
-from typing import Dict, Any
+from typing import Any
+
 import httpx
 import pandas as pd
-
-from btc_oracle_ml.config import MEMPOOL_FEES_URL, DATA_DIR
+from btc_oracle_ml.config import DATA_DIR, MEMPOOL_FEES_URL
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class OnChainClient:
     def __init__(self):
         self.cache_file = DATA_DIR / "onchain_metrics.parquet"
 
-    def fetch_live_mempool_fees(self) -> Dict[str, Any]:
+    def fetch_live_mempool_fees(self) -> dict[str, Any]:
         """Fetch current recommended fee rates in sat/vB."""
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -47,7 +47,6 @@ class OnChainClient:
 
         trades = ohlcv_df["number_of_trades"].clip(lower=1)
         volume = ohlcv_df["volume"].clip(lower=1e-8)
-        quote_vol = ohlcv_df["quote_asset_volume"]
         taker_buy = ohlcv_df["taker_buy_base_volume"]
 
         # Average trade size in BTC

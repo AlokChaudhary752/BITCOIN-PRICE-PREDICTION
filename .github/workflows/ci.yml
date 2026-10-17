@@ -25,19 +25,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r packages/ml/requirements.txt
           pip install -r apps/api/requirements.txt
-          pip install pytest pytest-asyncio pytest-playwright ruff
+          pip install -e packages/ml
+          pip install pytest pytest-asyncio ruff
 
       - name: Lint with Ruff
         run: |
           ruff check packages/ml apps/api
 
-      - name: Run ML Validation & Leakage Tests
+      - name: Run Tests
+        env:
+          PYTHONPATH: .
         run: |
-          pytest packages/ml/tests -v
-
-      - name: Run Backend API Test Suite
-        run: |
-          pytest apps/api/tests -v
+          pytest -v
 
   frontend:
     name: Web Frontend Verification
@@ -50,12 +49,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
-          cache-dependency-path: apps/web/package-lock.json
 
       - name: Install Frontend Dependencies
         working-directory: apps/web
-        run: npm ci
+        run: npm install
 
       - name: Type-Check and Build Production Bundle
         working-directory: apps/web
@@ -82,16 +79,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r packages/ml/requirements.txt
           pip install -r apps/api/requirements.txt
+          pip install -e packages/ml
           pip install pytest pytest-asyncio pytest-playwright playwright
           playwright install --with-deps chromium
-          cd apps/web && npm ci
+          cd apps/web && npm install
 
       - name: Run E2E Tests
+        env:
+          PYTHONPATH: .
         run: |
-          # Start API and Web servers in background
-          uvicorn apps.api.src.main:app --host 127.0.0.1 --port 8000 &
+          python -m uvicorn apps.api.src.main:app --host 127.0.0.1 --port 8000 &
           cd apps/web && npm run dev -- --host 127.0.0.1 --port 5173 &
-          sleep 5
+          sleep 6
           pytest tests/test_stage4_auth_playwright.py -v
           pytest tests/test_stage5_dashboard_playwright.py -v
           pytest tests/test_stage6_advanced_views_playwright.py -v

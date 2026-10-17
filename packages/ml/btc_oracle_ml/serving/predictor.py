@@ -4,21 +4,19 @@ Loads registered champion model artifacts and generates live probabilistic forec
 """
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
-import joblib
-import pandas as pd
-import numpy as np
+from typing import Any
 
+import joblib
+import numpy as np
+import pandas as pd
 from btc_oracle_ml.config import (
     MODEL_REGISTRY_DIR,
-    HORIZONS,
-    REGIME_LABELS,
     REGIME_RANGING,
 )
 from btc_oracle_ml.features.pipeline import FeaturePipeline
-from btc_oracle_ml.models.regime_hmm import RegimeHMM
 from btc_oracle_ml.models.ensemble import RegimeEnsemble
 from btc_oracle_ml.models.explain import ModelExplainer
+from btc_oracle_ml.models.regime_hmm import RegimeHMM
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +24,15 @@ logger = logging.getLogger(__name__)
 class BTCOraclePredictor:
     """Production serving wrapper for all horizons and regimes."""
 
-    def __init__(self, registry_dir: Optional[Path] = None):
+    def __init__(self, registry_dir: Path | None = None):
         self.registry_dir = registry_dir or MODEL_REGISTRY_DIR
-        self.ensembles: Dict[str, RegimeEnsemble] = {}
-        self.regime_hmm: Optional[RegimeHMM] = None
-        self.explainers: Dict[str, ModelExplainer] = {}
+        self.ensembles: dict[str, RegimeEnsemble] = {}
+        self.regime_hmm: RegimeHMM | None = None
+        self.explainers: dict[str, ModelExplainer] = {}
         self.pipeline = FeaturePipeline()
         self.vol_95th: float = 0.02
         self.version: str = "1.0.0"
-        self.model_metadata: Dict[str, Any] = {}
+        self.model_metadata: dict[str, Any] = {}
 
     def load_champion(self) -> bool:
         """Load registered champion artifact package."""
@@ -57,7 +55,7 @@ class BTCOraclePredictor:
             logger.error(f"Error loading champion model bundle: {e}")
             return False
 
-    def predict_live(self, df_recent: pd.DataFrame) -> Dict[str, Any]:
+    def predict_live(self, df_recent: pd.DataFrame) -> dict[str, Any]:
         """
         Generate full suite of live forecasts from recent candle history.
         df_recent: at least 200 hours of recent OHLCV + sentiment data.
@@ -83,7 +81,7 @@ class BTCOraclePredictor:
             regime_label, state_probs, regime_conf = REGIME_RANGING, np.array([0.5, 0.3, 0.2]), 0.5
 
         # Multi-horizon probabilistic forecasts
-        horizon_forecasts: Dict[str, Any] = {}
+        horizon_forecasts: dict[str, Any] = {}
         for h_name, ensemble in self.ensembles.items():
             fc = ensemble.predict_probabilistic(
                 X_sample=latest_X,

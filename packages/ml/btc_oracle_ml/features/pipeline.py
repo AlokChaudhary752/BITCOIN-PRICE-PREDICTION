@@ -2,29 +2,28 @@
 End-to-End Feature Engineering Pipeline.
 Transforms raw OHLCV + sentiment into causal feature matrices and horizon targets.
 """
-from typing import Tuple, List, Dict
+
 import numpy as np
 import pandas as pd
-
 from btc_oracle_ml.config import HORIZONS
+from btc_oracle_ml.features.indicators import (
+    compute_atr,
+    compute_bollinger_bands,
+    compute_macd,
+    compute_obv,
+    compute_rsi,
+    compute_stochastic,
+    compute_vwap_deviation,
+)
 from btc_oracle_ml.features.volatility import (
     compute_log_returns,
-    parkinson_volatility,
     garman_klass_volatility,
+    parkinson_volatility,
     realized_volatility,
-)
-from btc_oracle_ml.features.indicators import (
-    compute_rsi,
-    compute_macd,
-    compute_bollinger_bands,
-    compute_atr,
-    compute_stochastic,
-    compute_obv,
-    compute_vwap_deviation,
 )
 
 # Plain-English descriptions for institutional model explainability (SHAP narratives)
-FEATURE_DESCRIPTIONS: Dict[str, str] = {
+FEATURE_DESCRIPTIONS: dict[str, str] = {
     "return_1h": "1-hour price return",
     "return_4h": "4-hour price momentum",
     "return_24h": "24-hour price trend",
@@ -59,9 +58,9 @@ class FeaturePipeline:
     """Computes all causal features and horizon targets."""
 
     def __init__(self):
-        self.feature_names: List[str] = list(FEATURE_DESCRIPTIONS.keys())
+        self.feature_names: list[str] = list(FEATURE_DESCRIPTIONS.keys())
 
-    def transform(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, pd.Series]]:
+    def transform(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, pd.Series]]:
         """
         Takes raw dataframe and returns:
         - X: DataFrame of engineered features (aligned, strictly causal)
@@ -135,7 +134,7 @@ class FeaturePipeline:
 
         # Compute horizon targets
         # y_h = ln(Close_{t+h} / Close_t)
-        y_dict: Dict[str, pd.Series] = {}
+        y_dict: dict[str, pd.Series] = {}
         for h_name, h_hours in HORIZONS.items():
             future_close = close.shift(-h_hours)
             target_return = np.log(future_close / close)

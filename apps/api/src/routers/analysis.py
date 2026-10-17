@@ -2,21 +2,19 @@
 Analysis Router.
 Technical indicators, sentiment analysis, and walk-forward backtest engine.
 """
-from datetime import datetime, timezone
-from typing import List, Dict, Any
 import numpy as np
 import pandas as pd
+from btc_oracle_ml.config import DATA_DIR
+from btc_oracle_ml.data.sentiment import FearGreedClient
+from btc_oracle_ml.features.pipeline import FeaturePipeline
 from fastapi import APIRouter
 
 from apps.api.src.schemas import (
     BacktestRequest,
     BacktestResponse,
-    EquityPoint,
     BacktestTradeLog,
+    EquityPoint,
 )
-from btc_oracle_ml.config import DATA_DIR
-from btc_oracle_ml.features.pipeline import FeaturePipeline
-from btc_oracle_ml.data.sentiment import FearGreedClient
 
 router = APIRouter(prefix="/analysis", tags=["Analysis & Backtesting"])
 pipeline = FeaturePipeline()
@@ -120,7 +118,6 @@ async def run_backtest(req: BacktestRequest):
 
     equity_curve = []
     trades = []
-    daily_returns = []
 
     pos_open_time = None
     entry_p = 0.0
@@ -129,7 +126,6 @@ async def run_backtest(req: BacktestRequest):
     for i in range(1, len(df_bt)):
         ts = df_bt.index[i].to_pydatetime()
         curr_p = float(df_bt["close"].iloc[i])
-        prev_p = float(df_bt["close"].iloc[i - 1])
 
         # Benchmark (Buy and Hold) equity
         bench_eq = req.initial_capital * (curr_p / initial_p)
@@ -175,11 +171,9 @@ async def run_backtest(req: BacktestRequest):
                 btc_held = 0.0
 
         equity = cash + (btc_held * curr_p)
-        if equity > high_water_mark:
-            high_water_mark = equity
+        high_water_mark = max(high_water_mark, equity)
         dd = (high_water_mark - equity) / high_water_mark
-        if dd > max_dd:
-            max_dd = dd
+        max_dd = max(max_dd, dd)
 
         equity_curve.append(EquityPoint(
             timestamp=ts,

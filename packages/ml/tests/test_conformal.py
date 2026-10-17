@@ -3,8 +3,6 @@ Unit test for Conformal Quantile Calibration.
 Acceptance Check: Interval coverage is within 3 points of nominal (87% - 93% for nominal 90%).
 """
 import numpy as np
-import pytest
-
 from btc_oracle_ml.models.conformal import ConformalCalibrator
 
 

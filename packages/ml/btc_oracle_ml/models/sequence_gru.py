@@ -2,20 +2,19 @@
 PyTorch Stacked GRU Sequence Model with Quantile Pinball Loss.
 Processes rolling time series windows with self-attention for probabilistic forecasting.
 """
-from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
-
 from btc_oracle_ml.config import QUANTILES
+from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
 
 
 class PinballLoss(nn.Module):
     """Multi-quantile pinball loss: sum_q max(q*(y - y_hat), (q-1)*(y - y_hat))."""
 
-    def __init__(self, quantiles: List[float]):
+    def __init__(self, quantiles: list[float]):
         super().__init__()
         self.quantiles = quantiles
 
@@ -91,7 +90,7 @@ class SequenceGRUModel:
         horizon_name: str,
         seq_len: int = 24,
         hidden_dim: int = 48,
-        quantiles: Optional[List[float]] = None,
+        quantiles: list[float] | None = None,
         batch_size: int = 128,
         epochs: int = 10,
         learning_rate: float = 0.003,
@@ -104,15 +103,15 @@ class SequenceGRUModel:
         self.epochs = epochs
         self.lr = learning_rate
 
-        self.net: Optional[QuantileGRU] = None
-        self.means: Optional[np.ndarray] = None
-        self.stds: Optional[np.ndarray] = None
-        self.feature_names_: List[str] = []
+        self.net: QuantileGRU | None = None
+        self.means: np.ndarray | None = None
+        self.stds: np.ndarray | None = None
+        self.feature_names_: list[str] = []
 
     def _create_sequences(
         self,
         X_vals: np.ndarray,
-        y_vals: Optional[np.ndarray] = None,
+        y_vals: np.ndarray | None = None,
     ):
         n_samples = len(X_vals) - self.seq_len + 1
         if n_samples <= 0:
@@ -177,7 +176,7 @@ class SequenceGRUModel:
 
         return self
 
-    def predict_quantiles(self, X: pd.DataFrame) -> Dict[float, np.ndarray]:
+    def predict_quantiles(self, X: pd.DataFrame) -> dict[float, np.ndarray]:
         """Inference on input dataframe."""
         if self.net is None or self.means is None:
             zeros = np.zeros(len(X))
@@ -205,7 +204,7 @@ class SequenceGRUModel:
             pad_block = np.repeat(sorted_preds[0:1], pad_count, axis=0)
             sorted_preds = np.vstack([pad_block, sorted_preds])
 
-        result: Dict[float, np.ndarray] = {}
+        result: dict[float, np.ndarray] = {}
         for i, q in enumerate(self.quantiles):
             result[q] = sorted_preds[:, i]
 

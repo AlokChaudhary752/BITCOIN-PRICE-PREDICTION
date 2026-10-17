@@ -2,16 +2,15 @@
 Admin Management Router.
 Model registry control, retrain trigger, promotion, and audit log inspection.
 """
-from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, BackgroundTasks
+from btc_oracle_ml.config import MODEL_REGISTRY_DIR
+from btc_oracle_ml.train import train_pipeline
+from fastapi import APIRouter, BackgroundTasks, Depends
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
 from apps.api.src.database import get_db
-from apps.api.src.models import User, AuditLog
+from apps.api.src.models import AuditLog, User
 from apps.api.src.security import require_admin
-from btc_oracle_ml.train import train_pipeline
-from btc_oracle_ml.config import MODEL_REGISTRY_DIR
 
 router = APIRouter(prefix="/admin", tags=["Admin Controls"])
 

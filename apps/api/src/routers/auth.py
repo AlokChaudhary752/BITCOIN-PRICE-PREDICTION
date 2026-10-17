@@ -2,31 +2,32 @@
 Authentication Router.
 Registration, Argon2 login, rotating refresh tokens with family reuse revocation, and TOTP 2FA.
 """
-from datetime import datetime, timezone, timedelta
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import pyotp
+from datetime import UTC, datetime, timedelta
 
+import pyotp
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from apps.api.src.config import settings
 from apps.api.src.database import get_db
-from apps.api.src.models import User, PaperPortfolio, AuditLog
+from apps.api.src.models import AuditLog, PaperPortfolio, User
 from apps.api.src.schemas import (
-    RegisterRequest,
     LoginRequest,
+    RegisterRequest,
     TokenResponse,
-    UserResponse,
     TwoFactorSetupResponse,
     TwoFactorVerifyRequest,
+    UserResponse,
 )
 from apps.api.src.security import (
+    get_current_user,
     hash_password,
-    verify_password,
     issue_token_family,
     rotate_refresh_token,
-    get_current_user,
+    verify_password,
 )
-from apps.api.src.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -116,9 +117,9 @@ async def login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
 
     # Check lockout
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if user.locked_until:
-        locked_until_utc = user.locked_until.replace(tzinfo=timezone.utc) if user.locked_until.tzinfo is None else user.locked_until
+        locked_until_utc = user.locked_until.replace(tzinfo=UTC) if user.locked_until.tzinfo is None else user.locked_until
         if locked_until_utc > now:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

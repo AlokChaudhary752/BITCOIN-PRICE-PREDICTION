@@ -2,7 +2,8 @@
 Quantitative Metrics and Baselines for Time-Series Probabilistic Evaluation.
 Evaluates point accuracy, directional edge, quantile pinball loss, and coverage vs baselines.
 """
-from typing import Dict, Any, List
+from typing import Any
+
 import numpy as np
 
 
@@ -27,10 +28,10 @@ def compute_winkler_score(y_true: np.ndarray, lower: np.ndarray, upper: np.ndarr
 
 def evaluate_forecasts(
     y_true: np.ndarray,
-    predicted_quantiles: Dict[float, np.ndarray],
+    predicted_quantiles: dict[float, np.ndarray],
     current_prices: np.ndarray,
     future_actual_prices: np.ndarray,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Complete performance evaluation vs Last-Price Persistence and EMA Baselines.
     """

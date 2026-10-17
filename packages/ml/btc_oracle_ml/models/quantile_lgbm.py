@@ -3,11 +3,10 @@ Multi-Quantile LightGBM Regression Engine.
 Predicts calibrated quantiles (q05, q25, q50, q75, q95) per horizon with non-crossing guarantees.
 """
 import logging
-from typing import Dict, List, Optional
+
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import lightgbm as lgb
-
 from btc_oracle_ml.config import QUANTILES
 
 logger = logging.getLogger(__name__)
@@ -19,21 +18,21 @@ class QuantileLGBM:
     def __init__(
         self,
         horizon_name: str,
-        quantiles: Optional[List[float]] = None,
+        quantiles: list[float] | None = None,
         random_state: int = 42,
     ):
         self.horizon_name = horizon_name
         self.quantiles = quantiles or QUANTILES
         self.random_state = random_state
-        self.models: Dict[float, lgb.LGBMRegressor] = {}
-        self.feature_names_: List[str] = []
+        self.models: dict[float, lgb.LGBMRegressor] = {}
+        self.feature_names_: list[str] = []
 
     def fit(
         self,
         X: pd.DataFrame,
         y: pd.Series,
-        val_X: Optional[pd.DataFrame] = None,
-        val_y: Optional[pd.Series] = None,
+        val_X: pd.DataFrame | None = None,
+        val_y: pd.Series | None = None,
     ) -> "QuantileLGBM":
         """Fit a separate model for each quantile objective."""
         self.feature_names_ = list(X.columns)
@@ -62,7 +61,7 @@ class QuantileLGBM:
 
         return self
 
-    def predict_quantiles(self, X: pd.DataFrame) -> Dict[float, np.ndarray]:
+    def predict_quantiles(self, X: pd.DataFrame) -> dict[float, np.ndarray]:
         """
         Predict quantiles and enforce non-crossing monotonicity:
         q05 <= q25 <= q50 <= q75 <= q95.
@@ -75,7 +74,7 @@ class QuantileLGBM:
         # Monotonic sorting along the quantile axis to prevent quantile crossing
         sorted_preds = np.sort(raw_preds, axis=1)
 
-        result: Dict[float, np.ndarray] = {}
+        result: dict[float, np.ndarray] = {}
         for i, q in enumerate(self.quantiles):
             result[q] = sorted_preds[:, i]
 

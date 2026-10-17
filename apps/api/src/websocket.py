@@ -2,19 +2,19 @@
 WebSocket Connection Manager and Live Price Broadcast.
 Streams real-time Bitcoin price ticks and candlestick updates to connected web clients.
 """
-from typing import List
-import json
 import asyncio
-from datetime import datetime, timezone
-from fastapi import WebSocket, WebSocketDisconnect
+import json
+from datetime import UTC, datetime
+
 import numpy as np
+from fastapi import WebSocket, WebSocketDisconnect
 
 
 class ConnectionManager:
     """Manages active WebSocket connections."""
 
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -52,7 +52,7 @@ async def stream_price_feed(websocket: WebSocket, base_price: float = 81600.0):
                 "type": "TICK",
                 "symbol": "BTCUSDT",
                 "price": price,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
             await websocket.send_text(json.dumps(tick_msg))
             await asyncio.sleep(1.0)

@@ -3,22 +3,22 @@ Background Scheduler and Prediction Scoring Engine.
 Regularly polls market data, persists live forecasts, and scores elapsed predictions against realized prices.
 """
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from btc_oracle_ml.config import HORIZONS
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 
 from apps.api.src.database import AsyncSessionLocal
 from apps.api.src.models import Prediction
 from apps.api.src.routers.market import get_latest_dataframe
-from btc_oracle_ml.config import HORIZONS
 
 logger = logging.getLogger("btc_oracle.scheduler")
 scheduler = AsyncIOScheduler()
 
 
-async def score_pending_predictions(session: Optional[AsyncSession] = None) -> int:
+async def score_pending_predictions(session: AsyncSession | None = None) -> int:
     """
     Score unscored predictions whose forecast horizon has elapsed.
     Matches requirement: 'a live prediction row is written and later scored'.
@@ -34,10 +34,10 @@ async def score_pending_predictions(session: Optional[AsyncSession] = None) -> i
             return 0
 
         latest_price = float(df["close"].iloc[-1])
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Find unscored predictions
-        stmt = select(Prediction).where(Prediction.is_scored == False)
+        stmt = select(Prediction).where(Prediction.is_scored.is_(False))
         res = await session.execute(stmt)
         pending = res.scalars().all()
 
@@ -45,7 +45,7 @@ async def score_pending_predictions(session: Optional[AsyncSession] = None) -> i
         for pred in pending:
             h_hours = HORIZONS.get(pred.horizon, 1)
             # Check if prediction horizon has elapsed
-            pred_time = pred.timestamp.replace(tzinfo=timezone.utc) if pred.timestamp.tzinfo is None else pred.timestamp
+            pred_time = pred.timestamp.replace(tzinfo=UTC) if pred.timestamp.tzinfo is None else pred.timestamp
             elapsed = now >= pred_time + timedelta(hours=h_hours)
 
             # In development/test mode or elapsed time, evaluate against realized/latest market price

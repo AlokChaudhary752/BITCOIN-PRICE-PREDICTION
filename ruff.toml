@@ -1,0 +1,12 @@
+# Ruff configuration for BTC Oracle
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",   # Line length
+    "B008",   # FastAPI Depends() in function parameters
+    "BLE001", # Catch generic Exception
+    "RUF059", # Unpacked variable
+]

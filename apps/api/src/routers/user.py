@@ -2,27 +2,27 @@
 User Management and Paper Trading Router.
 Alerts management and virtual capital trading portfolio.
 """
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
 from apps.api.src.database import get_db
-from apps.api.src.models import User, Alert, PaperPortfolio, PaperTrade
+from apps.api.src.models import Alert, PaperPortfolio, PaperTrade, User
+from apps.api.src.routers.market import get_latest_dataframe
 from apps.api.src.schemas import (
     AlertCreate,
     AlertResponse,
+    PaperPortfolioResponse,
     PaperTradeCreate,
     PaperTradeResponse,
-    PaperPortfolioResponse,
 )
 from apps.api.src.security import get_current_user
-from apps.api.src.routers.market import get_latest_dataframe
 
 router = APIRouter(prefix="/user", tags=["User & Portfolio"])
 
 
-@router.get("/alerts", response_model=List[AlertResponse])
+@router.get("/alerts", response_model=list[AlertResponse])
 async def list_alerts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """List all active alerts configured by the user."""
     stmt = select(Alert).where(Alert.user_id == user.id).order_by(desc(Alert.created_at))
@@ -65,7 +65,6 @@ async def delete_alert(
         raise HTTPException(status_code=404, detail="Alert not found.")
     await db.delete(alert)
     await db.commit()
-    return None
 
 
 @router.get("/portfolio", response_model=PaperPortfolioResponse)

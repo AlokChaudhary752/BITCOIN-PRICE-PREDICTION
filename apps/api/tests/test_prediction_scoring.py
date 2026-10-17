@@ -2,10 +2,11 @@
 Live Prediction Persistence and Scoring Unit Test.
 Acceptance Check: a live prediction row is written and later scored.
 """
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.src.models import Prediction
 from apps.api.src.scheduler import score_pending_predictions
@@ -14,7 +15,7 @@ from apps.api.src.scheduler import score_pending_predictions
 @pytest.mark.asyncio
 async def test_live_prediction_written_and_scored(db_session: AsyncSession):
     # 1. WRITE: Insert a live prediction row with is_scored = False
-    past_timestamp = datetime.now(timezone.utc) - timedelta(hours=2)
+    past_timestamp = datetime.now(UTC) - timedelta(hours=2)
     pred_row = Prediction(
         horizon="1h",
         timestamp=past_timestamp,

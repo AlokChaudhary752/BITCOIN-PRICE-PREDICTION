@@ -2,11 +2,8 @@
 Conformalized Quantile Regression with Finite-Sample Coverage Guarantees.
 Calibrates empirical prediction intervals to match nominal coverage (50% and 90%).
 """
-from typing import Dict, Tuple
 import numpy as np
-import pandas as pd
-
-from btc_oracle_ml.config import NOMINAL_COVERAGE_90, NOMINAL_COVERAGE_50
+from btc_oracle_ml.config import NOMINAL_COVERAGE_50, NOMINAL_COVERAGE_90
 
 
 class ConformalCalibrator:
@@ -30,7 +27,7 @@ class ConformalCalibrator:
     def calibrate(
         self,
         y_true: np.ndarray,
-        raw_quantiles: Dict[float, np.ndarray],
+        raw_quantiles: dict[float, np.ndarray],
     ) -> "ConformalCalibrator":
         """
         Calibrate on held-out calibration set.
@@ -75,8 +72,8 @@ class ConformalCalibrator:
 
     def apply_conformal(
         self,
-        raw_quantiles: Dict[float, np.ndarray],
-    ) -> Dict[float, np.ndarray]:
+        raw_quantiles: dict[float, np.ndarray],
+    ) -> dict[float, np.ndarray]:
         """Apply calibrated adjustments to predicted quantiles."""
         calibrated = dict(raw_quantiles)
 

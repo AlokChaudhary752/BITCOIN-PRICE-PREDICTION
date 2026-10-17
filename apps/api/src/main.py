@@ -2,25 +2,26 @@
 FastAPI Main Application.
 Institutional Bitcoin Forecasting API.
 """
-from contextlib import asynccontextmanager
 import time
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 from apps.api.src.config import settings
 from apps.api.src.database import init_db
-from apps.api.src.scheduler import start_scheduler, stop_scheduler
 from apps.api.src.routers import (
-    auth,
-    market,
-    forecast,
-    analysis,
-    user,
     admin,
+    analysis,
+    auth,
+    forecast,
+    market,
+    user,
 )
-from apps.api.src.websocket import stream_price_feed
 from apps.api.src.routers.market import get_latest_dataframe
+from apps.api.src.scheduler import start_scheduler, stop_scheduler
+from apps.api.src.websocket import stream_price_feed
 
 # Prometheus metrics
 REQUEST_COUNT = Counter("http_requests_total", "Total HTTP Requests", ["method", "endpoint", "status"])

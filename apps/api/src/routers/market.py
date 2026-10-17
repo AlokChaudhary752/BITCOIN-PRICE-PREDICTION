@@ -2,23 +2,22 @@
 Market Data Router.
 Live pricing, historical candles, order book depth, on-chain metrics, and WebSocket stream.
 """
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from datetime import UTC, datetime
+
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
-import httpx
-
-from apps.api.src.schemas import (
-    LivePriceResponse,
-    MarketHistoryResponse,
-    CandleItem,
-    OrderBookResponse,
-    OrderBookLevel,
-    OnChainMetricsResponse,
-)
 from btc_oracle_ml.config import DATA_DIR
 from btc_oracle_ml.data.onchain import OnChainClient
+from fastapi import APIRouter, Query
+
+from apps.api.src.schemas import (
+    CandleItem,
+    LivePriceResponse,
+    MarketHistoryResponse,
+    OnChainMetricsResponse,
+    OrderBookLevel,
+    OrderBookResponse,
+)
 
 router = APIRouter(prefix="/market", tags=["Market Data"])
 onchain_client = OnChainClient()
@@ -49,7 +48,7 @@ async def get_live_price():
             low_24h=80200.0,
             volume_24h=24500.0,
             realized_volatility=0.0145,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     last_24 = df.iloc[-24:]
@@ -126,7 +125,7 @@ async def get_orderbook():
     curr_price = float(df["close"].iloc[-1]) if not df.empty else 81500.0
 
     # Generate realistic multi-level depth around current price
-    np.random.seed(int(datetime.now(timezone.utc).timestamp()) // 5)  # Updates smoothly
+    np.random.seed(int(datetime.now(UTC).timestamp()) // 5)  # Updates smoothly
     bids = []
     asks = []
     bid_vol_tot = 0.0
@@ -147,7 +146,7 @@ async def get_orderbook():
 
     return OrderBookResponse(
         symbol="BTCUSDT",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         bids=bids,
         asks=asks,
         imbalance_ratio=imbalance,

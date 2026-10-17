@@ -3,33 +3,34 @@ Master Training Pipeline for BTC Oracle Quantitative ML Engine.
 Executes dataset ingestion, feature engineering, HMM regime fitting, multi-horizon quantile modeling,
 conformal calibration, purged walk-forward validation, and leakage testing.
 """
-import sys
-import os
 import json
 import logging
-from datetime import datetime, timezone
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
+
 import joblib
 import numpy as np
-import pandas as pd
 
 from btc_oracle_ml.config import (
-    MODEL_REGISTRY_DIR,
-    REPORTS_DIR,
     HORIZONS,
+    MODEL_REGISTRY_DIR,
     NOMINAL_COVERAGE_90,
-    NOMINAL_COVERAGE_50,
+    REPORTS_DIR,
 )
 from btc_oracle_ml.data.curator import DataCurator
+from btc_oracle_ml.evaluation.leakage import (
+    run_target_shuffle_leakage_test,
+    verify_feature_causality,
+)
+from btc_oracle_ml.evaluation.walk_forward import WalkForwardValidator
 from btc_oracle_ml.features.pipeline import FeaturePipeline
-from btc_oracle_ml.models.regime_hmm import RegimeHMM
-from btc_oracle_ml.models.quantile_lgbm import QuantileLGBM
-from btc_oracle_ml.models.sequence_gru import SequenceGRUModel
 from btc_oracle_ml.models.conformal import ConformalCalibrator
 from btc_oracle_ml.models.ensemble import RegimeEnsemble
 from btc_oracle_ml.models.explain import ModelExplainer
-from btc_oracle_ml.evaluation.walk_forward import WalkForwardValidator
-from btc_oracle_ml.evaluation.leakage import run_target_shuffle_leakage_test, verify_feature_causality
+from btc_oracle_ml.models.quantile_lgbm import QuantileLGBM
+from btc_oracle_ml.models.regime_hmm import RegimeHMM
+from btc_oracle_ml.models.sequence_gru import SequenceGRUModel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("btc_oracle.train")
@@ -37,7 +38,7 @@ logger = logging.getLogger("btc_oracle.train")
 
 def train_pipeline(force_refresh: bool = False, max_samples: int = 15000):
     logger.info("=== STARTING BTC ORACLE QUANTITATIVE ML TRAINING PIPELINE ===")
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.now(UTC)
 
     # 1. DATA CURATION & INGESTION
     logger.info("Step 1/6: Building and validating dataset...")
@@ -220,7 +221,7 @@ def train_pipeline(force_refresh: bool = False, max_samples: int = 15000):
         print(f"  Horizon {h:4s}: Nominal 90% -> Empirical {stat['empirical_coverage_90']:.2f}% (Error: {stat['diff_from_nominal_90']:.2f}%) [PASS: <3.0%]")
     print("-" * 80)
     print("LEAKAGE & CAUSALITY VALIDATION:")
-    print(f"  Feature Causality Test:    PASSED (No lookahead bias)")
+    print("  Feature Causality Test:    PASSED (No lookahead bias)")
     print(f"  Target Shift / Shuffle:    PASSED (Real Dir Acc: {leakage_check['real_directional_accuracy']}% -> Shifted: {leakage_check['shifted_directional_accuracy']}%)")
     print("=" * 80 + "\n")
 
@@ -232,10 +233,10 @@ def generate_markdown_report(path: Path, metadata: dict, wf_results: dict, confo
     b = wf_results["overall"]["baseline_persistence"]
     content = f"""# BTC Oracle ML Engine - Model Card & Evaluation Report
 
-**Model Version:** 1.0.0  
-**Generated At:** {metadata['created_at']}  
-**Dataset Content Hash:** `{metadata['dataset_hash']}`  
-**Training Samples:** {metadata['sample_count']} hourly candles  
+**Model Version:** 1.0.0
+**Generated At:** {metadata['created_at']}
+**Dataset Content Hash:** `{metadata['dataset_hash']}`
+**Training Samples:** {metadata['sample_count']} hourly candles
 
 ## 1. Walk-Forward Performance (Purged & Embargoed)
 

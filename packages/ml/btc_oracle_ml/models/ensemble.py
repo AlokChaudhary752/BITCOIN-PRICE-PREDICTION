@@ -2,19 +2,18 @@
 Regime-Conditioned Ensemble and Agreement Engine.
 Synthesizes LightGBM and PyTorch GRU quantile outputs with cross-model dispersion metrics.
 """
-from typing import Dict, Any, Tuple
+from typing import Any
+
 import numpy as np
 import pandas as pd
-
 from btc_oracle_ml.config import (
     QUANTILES,
     REGIME_HIGH_VOLATILITY,
     REGIME_TRENDING_BULL,
-    REGIME_RANGING,
 )
+from btc_oracle_ml.models.conformal import ConformalCalibrator
 from btc_oracle_ml.models.quantile_lgbm import QuantileLGBM
 from btc_oracle_ml.models.sequence_gru import SequenceGRUModel
-from btc_oracle_ml.models.conformal import ConformalCalibrator
 
 
 class RegimeEnsemble:
@@ -39,7 +38,7 @@ class RegimeEnsemble:
         regime_label: str,
         current_vol: float,
         vol_95th_percentile: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Produce institutional probabilistic forecast:
         - Quantile prices: q05, q25, q50, q75, q95
@@ -63,7 +62,7 @@ class RegimeEnsemble:
             w_lgb, w_gru = 0.60, 0.40
 
         # Weighted raw return quantiles
-        raw_combined_q: Dict[float, np.ndarray] = {}
+        raw_combined_q: dict[float, np.ndarray] = {}
         for q in QUANTILES:
             raw_combined_q[q] = (w_lgb * lgbm_q[q]) + (w_gru * gru_q[q])
 

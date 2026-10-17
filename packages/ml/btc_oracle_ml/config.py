@@ -2,7 +2,6 @@
 Configuration and constants for BTC Oracle ML Engine.
 """
 from pathlib import Path
-from typing import List, Dict
 
 # Paths
 ML_PACKAGE_ROOT = Path(__file__).resolve().parent.parent
@@ -17,7 +16,7 @@ MODEL_REGISTRY_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Forecasting Horizons in hours
-HORIZONS: Dict[str, int] = {
+HORIZONS: dict[str, int] = {
     "1h": 1,
     "4h": 4,
     "24h": 24,
@@ -26,7 +25,7 @@ HORIZONS: Dict[str, int] = {
 }
 
 # Quantiles for probabilistic distribution
-QUANTILES: List[float] = [0.05, 0.25, 0.50, 0.75, 0.95]
+QUANTILES: list[float] = [0.05, 0.25, 0.50, 0.75, 0.95]
 
 # Nominal target coverage for prediction intervals
 NOMINAL_COVERAGE_90: float = 0.90
@@ -37,7 +36,7 @@ REGIME_TRENDING_BULL = "trending_bull"
 REGIME_RANGING = "ranging"
 REGIME_HIGH_VOLATILITY = "high_volatility"
 
-REGIME_LABELS: Dict[int, str] = {
+REGIME_LABELS: dict[int, str] = {
     0: REGIME_RANGING,
     1: REGIME_TRENDING_BULL,
     2: REGIME_HIGH_VOLATILITY,

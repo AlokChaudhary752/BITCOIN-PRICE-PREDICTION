@@ -2,10 +2,10 @@
 Pydantic v2 API Request and Response Schemas.
 Full typing for TypeScript OpenAPI generation.
 """
-from typing import List, Dict, Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from typing import Any
 
+from pydantic import BaseModel, EmailStr, Field
 
 # ==========================================
 # AUTH SCHEMAS
@@ -21,7 +21,7 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     remember_me: bool = False
-    totp_code: Optional[str] = None
+    totp_code: str | None = None
 
 
 class TokenResponse(BaseModel):
@@ -44,7 +44,7 @@ class UserResponse(BaseModel):
 class TwoFactorSetupResponse(BaseModel):
     secret: str
     qr_code_uri: str
-    recovery_codes: List[str]
+    recovery_codes: list[str]
 
 
 class TwoFactorVerifyRequest(BaseModel):
@@ -79,7 +79,7 @@ class MarketHistoryResponse(BaseModel):
     symbol: str = "BTCUSDT"
     interval: str
     count: int
-    candles: List[CandleItem]
+    candles: list[CandleItem]
 
 
 class OrderBookLevel(BaseModel):
@@ -90,8 +90,8 @@ class OrderBookLevel(BaseModel):
 class OrderBookResponse(BaseModel):
     symbol: str = "BTCUSDT"
     timestamp: datetime
-    bids: List[OrderBookLevel]
-    asks: List[OrderBookLevel]
+    bids: list[OrderBookLevel]
+    asks: list[OrderBookLevel]
     imbalance_ratio: float
 
 
@@ -139,13 +139,13 @@ class HorizonForecast(BaseModel):
     interval_50: IntervalBand
     interval_90: IntervalBand
     quantiles: QuantilesDict
-    per_model_median: Dict[str, float]
+    per_model_median: dict[str, float]
 
 
 class MarketRegime(BaseModel):
     label: str
     confidence: float
-    probabilities: Dict[str, float]
+    probabilities: dict[str, float]
 
 
 class DriverImpact(BaseModel):
@@ -159,7 +159,7 @@ class DriverImpact(BaseModel):
 
 class PredictionExplanation(BaseModel):
     narrative: str
-    top_drivers: List[DriverImpact]
+    top_drivers: list[DriverImpact]
 
 
 class PredictionResponse(BaseModel):
@@ -167,8 +167,8 @@ class PredictionResponse(BaseModel):
     timestamp: datetime
     current_price: float
     market_regime: MarketRegime
-    primary_signal: Dict[str, Any]
-    horizons: Dict[str, HorizonForecast]
+    primary_signal: dict[str, Any]
+    horizons: dict[str, HorizonForecast]
     explanation: PredictionExplanation
 
 
@@ -178,8 +178,8 @@ class PredictionHistoryItem(BaseModel):
     horizon: str
     current_price: float
     point_forecast: float
-    actual_price: Optional[float]
-    abs_error: Optional[float]
+    actual_price: float | None
+    abs_error: float | None
     is_scored: bool
     signal: str
     model_version: str
@@ -196,8 +196,8 @@ class BacktestRequest(BaseModel):
     stop_loss_pct: float = Field(default=0.02, ge=0.005)
     risk_per_trade_pct: float = Field(default=0.02, ge=0.005)
     confidence_threshold: float = Field(default=65.0, ge=50.0)
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    start_date: str | None = None
+    end_date: str | None = None
 
 
 class EquityPoint(BaseModel):
@@ -231,8 +231,8 @@ class BacktestResponse(BaseModel):
     win_rate_pct: float
     profit_factor: float
     total_trades: int
-    equity_curve: List[EquityPoint]
-    trades: List[BacktestTradeLog]
+    equity_curve: list[EquityPoint]
+    trades: list[BacktestTradeLog]
 
 
 # ==========================================
@@ -242,18 +242,18 @@ class BacktestResponse(BaseModel):
 class AlertCreate(BaseModel):
     alert_type: str  # 'price' | 'signal' | 'regime'
     condition: str  # 'above' | 'below' | 'change'
-    threshold: Optional[float] = None
-    target_value: Optional[str] = None
+    threshold: float | None = None
+    target_value: str | None = None
 
 
 class AlertResponse(BaseModel):
     id: str
     alert_type: str
     condition: str
-    threshold: Optional[float]
-    target_value: Optional[str]
+    threshold: float | None
+    target_value: str | None
     is_active: bool
-    triggered_at: Optional[datetime]
+    triggered_at: datetime | None
     created_at: datetime
 
 
@@ -282,4 +282,4 @@ class PaperPortfolioResponse(BaseModel):
     realized_pnl: float
     current_btc_price: float
     unrealized_pnl: float
-    recent_trades: List[PaperTradeResponse]
+    recent_trades: list[PaperTradeResponse]
