@@ -21,7 +21,11 @@ from apps.api.src.routers import (
 )
 from apps.api.src.routers.market import get_latest_dataframe
 from apps.api.src.scheduler import start_scheduler, stop_scheduler
-from apps.api.src.websocket import stream_price_feed
+from apps.api.src.websocket import (
+    start_streaming_pipeline,
+    stop_streaming_pipeline,
+    stream_price_feed,
+)
 
 # Prometheus metrics
 REQUEST_COUNT = Counter("http_requests_total", "Total HTTP Requests", ["method", "endpoint", "status"])
@@ -35,8 +39,12 @@ async def lifespan(app: FastAPI):
     await init_db()
     # 2. Start background scheduler
     start_scheduler()
+    # 3. Start real-time Binance WebSocket streaming inference pipeline
+    await start_streaming_pipeline()
     yield
-    # 3. Shutdown scheduler
+    # 4. Gracefully shutdown streaming pipeline
+    await stop_streaming_pipeline()
+    # 5. Shutdown scheduler
     stop_scheduler()
 
 

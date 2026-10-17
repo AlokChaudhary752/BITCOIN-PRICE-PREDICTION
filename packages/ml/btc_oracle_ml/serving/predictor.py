@@ -24,6 +24,16 @@ logger = logging.getLogger(__name__)
 class BTCOraclePredictor:
     """Production serving wrapper for all horizons and regimes."""
 
+    _instance: "BTCOraclePredictor | None" = None
+
+    @classmethod
+    def get_instance(cls) -> "BTCOraclePredictor":
+        """Singleton accessor ensuring champion artifacts are loaded once."""
+        if cls._instance is None:
+            cls._instance = cls()
+            cls._instance.load_champion()
+        return cls._instance
+
     def __init__(self, registry_dir: Path | None = None):
         self.registry_dir = registry_dir or MODEL_REGISTRY_DIR
         self.ensembles: dict[str, RegimeEnsemble] = {}

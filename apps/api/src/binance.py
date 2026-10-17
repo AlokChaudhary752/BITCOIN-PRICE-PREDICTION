@@ -1,13 +1,13 @@
 """
 Binance Permanent WebSocket Data Ingestion Stream.
-Handles live tick ingestion, concurrent queueing, reconnection, and Z-Score outlier filtering.
+Handles live tick ingestion, concurrent queueing, automated reconnection,
+and Z-Score outlier filtering to guard against fat-finger spikes and exchange glitches.
 """
 import asyncio
 import json
 import logging
 from collections import deque
 from datetime import UTC, datetime
-from typing import Any
 
 import numpy as np
 import websockets
@@ -18,30 +18,42 @@ logger = logging.getLogger("btc_oracle.binance_ws")
 class ZScoreOutlierFilter:
     """
     Guards live stream against 'Fat Finger' trades, anomalous price spikes,
-    or upstream exchange API glitches using rolling Z-Score filtering.
+    or upstream exchange API glitches using a rolling Z-Score outlier filter.
     """
 
-    def __init__(self, window_size: int = 50, z_threshold: float = 4.5, max_pct_dev: float = 0.035):
+    def __init__(
+        self,
+        window_size: int = 50,
+        z_threshold: float = 4.0,
+        max_pct_dev: float = 0.035,
+    ):
         self.window_size = window_size
         self.z_threshold = z_threshold
         self.max_pct_dev = max_pct_dev
         self.prices: deque[float] = deque(maxlen=window_size)
 
     def is_valid(self, price: float) -> bool:
+        """
+        Validate incoming tick price.
+        Rejects non-positive, NaN/Inf, or extreme statistical outliers.
+        """
         if price <= 0.0 or not np.isfinite(price):
             return False
 
+        # Allow initial ticks to populate the baseline window
         if len(self.prices) < 5:
             self.prices.append(price)
             return True
 
         mean_p = float(np.mean(self.prices))
         std_p = float(np.std(self.prices))
+        # Ensure a minimum effective std (0.1% of price) to prevent division by zero in calm markets
         effective_std = max(std_p, mean_p * 0.001)
 
         z_score = abs(price - mean_p) / effective_std
         pct_dev = abs(price - mean_p) / mean_p
 
+        # Reject if tick violates both statistical z-threshold and practical percentage deviation
         if z_score > self.z_threshold and pct_dev > self.max_pct_dev:
             logger.warning(
                 f"[OutlierFilter] REJECTED anomalous tick: ${price:.2f} "
@@ -56,12 +68,11 @@ class ZScoreOutlierFilter:
 class BinanceWebSocketStream:
     """
     Permanent WebSocket Stream client for Binance.
-    Pushes valid ticks into an asyncio.Queue without blocking downstream inference.
+    Pushes validated ticks into an asyncio.Queue without blocking the event loop.
     Includes automated reconnection, exponential backoff, and synthetic fallback.
     """
 
-    DEFAULT_STREAM_URL = "wss://stream.binance.com:9443/ws/btcusdt@ticker"
-    KLINE_STREAM_URL = "wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/btcusdt@kline_1m"
+    DEFAULT_STREAM_URL = "wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/btcusdt@kline_1m"
 
     def __init__(
         self,
@@ -79,7 +90,7 @@ class BinanceWebSocketStream:
         self.consecutive_errors = 0
 
     async def start(self):
-        """Start the background ingestion worker."""
+        """Start the background ingestion worker task."""
         if self.is_running:
             return
         self.is_running = True
@@ -98,7 +109,7 @@ class BinanceWebSocketStream:
         logger.info("Binance WebSocket ingestion worker stopped.")
 
     async def _run_connection_loop(self):
-        """Permanent reconnect loop with exponential backoff and fallback."""
+        """Permanent reconnect loop with exponential backoff and synthetic fallback."""
         backoff_sec = 1.0
         while self.is_running:
             try:
@@ -123,10 +134,10 @@ class BinanceWebSocketStream:
                 self.consecutive_errors += 1
                 logger.warning(
                     f"Binance WS connection error ({type(e).__name__}: {e}). "
-                    f"Attempts: {self.consecutive_errors}. Backoff: {backoff_sec:.1f}s"
+                    f"Attempt: {self.consecutive_errors}. Backoff: {backoff_sec:.1f}s"
                 )
 
-                # If external exchange is unreachable, run high-precision fallback tick generator
+                # If external exchange is offline or DNS/network fails, provide micro-tick fallback
                 if self.consecutive_errors >= 2:
                     await self._run_fallback_tick()
 
@@ -147,7 +158,7 @@ class BinanceWebSocketStream:
             kline_info = None
 
             if event_type == "24hrTicker":
-                # 'c' = Last price, 'v' = Total traded base asset volume
+                # 'c' = Last price, 'v' = Total traded volume
                 price = float(payload.get("c", 0.0))
                 volume = float(payload.get("v", 0.0))
 
@@ -176,11 +187,10 @@ class BinanceWebSocketStream:
                     "kline": kline_info,
                     "timestamp": datetime.now(UTC).isoformat(),
                 }
-                # Non-blocking enqueue to concurrent queue
+                # Non-blocking enqueue to concurrent queue with congestion mitigation
                 try:
                     self.queue.put_nowait(tick_item)
                 except asyncio.QueueFull:
-                    # Drop oldest if congested
                     try:
                         self.queue.get_nowait()
                     except asyncio.QueueEmpty:

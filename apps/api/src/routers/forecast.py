@@ -22,8 +22,7 @@ from apps.api.src.schemas import (
 router = APIRouter(prefix="/forecast", tags=["Forecast Engine"])
 
 # Global predictor instance
-predictor = BTCOraclePredictor()
-predictor.load_champion()
+predictor = BTCOraclePredictor.get_instance()
 
 
 def get_recent_candles(n: int = 300) -> pd.DataFrame:
