@@ -1,0 +1,19 @@
+{
+  "name": "btc-oracle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Institutional-Grade Probabilistic Bitcoin Forecasting Platform",
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "preview": "npm --prefix apps/web run preview",
+    "lint": "npm --prefix apps/web run lint",
+    "test:e2e": "pytest tests/ -v"
+  },
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "author": "BTC Oracle Team",
+  "license": "MIT"
+}

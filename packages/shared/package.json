@@ -1,0 +1,10 @@
+{
+  "name": "@btc-oracle/shared",
+  "version": "1.0.0",
+  "description": "Shared TypeScript OpenAPI client and contract types for BTC Oracle",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  }
+}

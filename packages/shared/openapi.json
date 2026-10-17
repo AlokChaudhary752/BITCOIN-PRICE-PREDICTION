@@ -1,0 +1,2298 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BTC Oracle API",
+    "description": "Institutional-grade probabilistic Bitcoin forecasting platform API.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Healthz",
+        "description": "Liveness probe.",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Readyz",
+        "description": "Readiness probe checking database and model availability.",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Metrics",
+        "description": "Prometheus metrics endpoint.",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register",
+        "description": "Register a new user account with Argon2 password hashing.",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Login",
+        "description": "Login and receive short-lived JWT access token plus rotating httpOnly refresh cookie.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Refresh Tokens",
+        "description": "Rotate refresh token. Reads refresh token from httpOnly cookie.\nEnforces automatic family revocation upon reuse attempt.",
+        "operationId": "refresh_tokens_api_v1_auth_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Logout",
+        "description": "Clear refresh token cookie.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get Me",
+        "description": "Return authenticated user profile.",
+        "operationId": "get_me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/2fa/setup": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Setup 2Fa",
+        "description": "Generate TOTP secret, provisioning URI, and recovery codes.",
+        "operationId": "setup_2fa_api_v1_auth_2fa_setup_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorSetupResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/2fa/verify": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Verify 2Fa",
+        "description": "Verify code and activate 2FA.",
+        "operationId": "verify_2fa_api_v1_auth_2fa_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/market/price/live": {
+      "get": {
+        "tags": [
+          "Market Data"
+        ],
+        "summary": "Get Live Price",
+        "description": "Return live Bitcoin price, 24h change, high/low, and realized volatility.",
+        "operationId": "get_live_price_api_v1_market_price_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivePriceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/price/history": {
+      "get": {
+        "tags": [
+          "Market Data"
+        ],
+        "summary": "Get Price History",
+        "description": "Return historical OHLCV candles.",
+        "operationId": "get_price_history_api_v1_market_price_history_get",
+        "parameters": [
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(1m|5m|1h|4h|1d|1w)$",
+              "default": "1h",
+              "title": "Interval"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 10,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/orderbook": {
+      "get": {
+        "tags": [
+          "Market Data"
+        ],
+        "summary": "Get Orderbook",
+        "description": "Return current order book depth and buy/sell imbalance.",
+        "operationId": "get_orderbook_api_v1_market_orderbook_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderBookResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/onchain": {
+      "get": {
+        "tags": [
+          "Market Data"
+        ],
+        "summary": "Get Onchain Metrics",
+        "description": "Return live mempool fee rates and causal network liquidity metrics.",
+        "operationId": "get_onchain_metrics_api_v1_market_onchain_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnChainMetricsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/predict": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get Live Prediction",
+        "description": "Generate and return live probabilistic forecast across all horizons.",
+        "operationId": "get_live_prediction_api_v1_forecast_predict_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/predict/all": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get All Horizons",
+        "description": "Return all 5 forecast horizons (1h, 4h, 24h, 7d, 30d) with fan chart data.",
+        "operationId": "get_all_horizons_api_v1_forecast_predict_all_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/predictions/history": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get Prediction History",
+        "description": "Return audited history of issued predictions and ex-post accuracy scores.",
+        "operationId": "get_prediction_history_api_v1_forecast_predictions_history_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PredictionHistoryItem"
+                  },
+                  "title": "Response Get Prediction History Api V1 Forecast Predictions History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/models/performance": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get Model Performance",
+        "description": "Return walk-forward champion metrics vs Persistence and EMA baselines.",
+        "operationId": "get_model_performance_api_v1_forecast_models_performance_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/models/calibration": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get Model Calibration",
+        "description": "Return reliability diagram points and conformal coverage guarantees.",
+        "operationId": "get_model_calibration_api_v1_forecast_models_calibration_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/models/explain": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get Model Explanations",
+        "description": "Return SHAP global feature importances and latest local waterfall.",
+        "operationId": "get_model_explanations_api_v1_forecast_models_explain_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/models/drift": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get Drift Monitors",
+        "description": "Return Population Stability Index (PSI) and error drift statistics.",
+        "operationId": "get_drift_monitors_api_v1_forecast_models_drift_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecast/regime": {
+      "get": {
+        "tags": [
+          "Forecast Engine"
+        ],
+        "summary": "Get Regime Status",
+        "description": "Return market regime status, probabilities, and transition matrix.",
+        "operationId": "get_regime_status_api_v1_forecast_regime_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/indicators": {
+      "get": {
+        "tags": [
+          "Analysis & Backtesting"
+        ],
+        "summary": "Get Technical Indicators",
+        "description": "Return latest technical indicators with historical series for charting.",
+        "operationId": "get_technical_indicators_api_v1_analysis_indicators_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/sentiment": {
+      "get": {
+        "tags": [
+          "Analysis & Backtesting"
+        ],
+        "summary": "Get Sentiment",
+        "description": "Return historical Fear & Greed index and headline polarity.",
+        "operationId": "get_sentiment_api_v1_analysis_sentiment_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/backtest": {
+      "post": {
+        "tags": [
+          "Analysis & Backtesting"
+        ],
+        "summary": "Run Backtest",
+        "description": "Execute walk-forward backtest simulation with fees, slippage, and position sizing.\nMatches exact mathematical formulas: CAGR, Sharpe, Sortino, Calmar, Max Drawdown.",
+        "operationId": "run_backtest_api_v1_analysis_backtest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BacktestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/alerts": {
+      "get": {
+        "tags": [
+          "User & Portfolio"
+        ],
+        "summary": "List Alerts",
+        "description": "List all active alerts configured by the user.",
+        "operationId": "list_alerts_api_v1_user_alerts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Alerts Api V1 User Alerts Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "User & Portfolio"
+        ],
+        "summary": "Create Alert",
+        "description": "Create a new alert trigger (price, signal, or regime change).",
+        "operationId": "create_alert_api_v1_user_alerts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/user/alerts/{alert_id}": {
+      "delete": {
+        "tags": [
+          "User & Portfolio"
+        ],
+        "summary": "Delete Alert",
+        "description": "Delete an alert.",
+        "operationId": "delete_alert_api_v1_user_alerts__alert_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/portfolio": {
+      "get": {
+        "tags": [
+          "User & Portfolio"
+        ],
+        "summary": "Get Portfolio",
+        "description": "Get user's virtual paper trading portfolio.",
+        "operationId": "get_portfolio_api_v1_user_portfolio_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperPortfolioResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/user/portfolio/trade": {
+      "post": {
+        "tags": [
+          "User & Portfolio"
+        ],
+        "summary": "Execute Trade",
+        "description": "Execute virtual paper trade (BUY or SELL BTC) at live market price.",
+        "operationId": "execute_trade_api_v1_user_portfolio_trade_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperTradeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperTradeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/retrain": {
+      "post": {
+        "tags": [
+          "Admin Controls"
+        ],
+        "summary": "Trigger Retrain",
+        "description": "Trigger quantitative model retraining job in background.",
+        "operationId": "trigger_retrain_api_v1_admin_retrain_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/promote": {
+      "post": {
+        "tags": [
+          "Admin Controls"
+        ],
+        "summary": "Promote Model",
+        "description": "Promote challenger model to production champion.",
+        "operationId": "promote_model_api_v1_admin_promote_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1.0.0",
+              "title": "Model Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/model-registry": {
+      "get": {
+        "tags": [
+          "Admin Controls"
+        ],
+        "summary": "Get Model Registry",
+        "description": "List model registry artifacts and provenance.",
+        "operationId": "get_model_registry_api_v1_admin_model_registry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/audit-log": {
+      "get": {
+        "tags": [
+          "Admin Controls"
+        ],
+        "summary": "Get Audit Logs",
+        "description": "Return chronological security and administrative audit trail.",
+        "operationId": "get_audit_logs_api_v1_admin_audit_log_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlertCreate": {
+        "properties": {
+          "alert_type": {
+            "type": "string",
+            "title": "Alert Type"
+          },
+          "condition": {
+            "type": "string",
+            "title": "Condition"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "target_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alert_type",
+          "condition"
+        ],
+        "title": "AlertCreate"
+      },
+      "AlertResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "alert_type": {
+            "type": "string",
+            "title": "Alert Type"
+          },
+          "condition": {
+            "type": "string",
+            "title": "Condition"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "target_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Value"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "triggered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triggered At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "alert_type",
+          "condition",
+          "threshold",
+          "target_value",
+          "is_active",
+          "triggered_at",
+          "created_at"
+        ],
+        "title": "AlertResponse"
+      },
+      "BacktestRequest": {
+        "properties": {
+          "initial_capital": {
+            "type": "number",
+            "minimum": 1000.0,
+            "title": "Initial Capital",
+            "default": 100000.0
+          },
+          "fee_rate": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fee Rate",
+            "default": 0.0006
+          },
+          "slippage": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Slippage",
+            "default": 0.0004
+          },
+          "stop_loss_pct": {
+            "type": "number",
+            "minimum": 0.005,
+            "title": "Stop Loss Pct",
+            "default": 0.02
+          },
+          "risk_per_trade_pct": {
+            "type": "number",
+            "minimum": 0.005,
+            "title": "Risk Per Trade Pct",
+            "default": 0.02
+          },
+          "confidence_threshold": {
+            "type": "number",
+            "minimum": 50.0,
+            "title": "Confidence Threshold",
+            "default": 65.0
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          }
+        },
+        "type": "object",
+        "title": "BacktestRequest"
+      },
+      "BacktestResponse": {
+        "properties": {
+          "initial_capital": {
+            "type": "number",
+            "title": "Initial Capital"
+          },
+          "final_equity": {
+            "type": "number",
+            "title": "Final Equity"
+          },
+          "total_return_pct": {
+            "type": "number",
+            "title": "Total Return Pct"
+          },
+          "benchmark_return_pct": {
+            "type": "number",
+            "title": "Benchmark Return Pct"
+          },
+          "cagr_pct": {
+            "type": "number",
+            "title": "Cagr Pct"
+          },
+          "sharpe_ratio": {
+            "type": "number",
+            "title": "Sharpe Ratio"
+          },
+          "sortino_ratio": {
+            "type": "number",
+            "title": "Sortino Ratio"
+          },
+          "calmar_ratio": {
+            "type": "number",
+            "title": "Calmar Ratio"
+          },
+          "max_drawdown_pct": {
+            "type": "number",
+            "title": "Max Drawdown Pct"
+          },
+          "win_rate_pct": {
+            "type": "number",
+            "title": "Win Rate Pct"
+          },
+          "profit_factor": {
+            "type": "number",
+            "title": "Profit Factor"
+          },
+          "total_trades": {
+            "type": "integer",
+            "title": "Total Trades"
+          },
+          "equity_curve": {
+            "items": {
+              "$ref": "#/components/schemas/EquityPoint"
+            },
+            "type": "array",
+            "title": "Equity Curve"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestTradeLog"
+            },
+            "type": "array",
+            "title": "Trades"
+          }
+        },
+        "type": "object",
+        "required": [
+          "initial_capital",
+          "final_equity",
+          "total_return_pct",
+          "benchmark_return_pct",
+          "cagr_pct",
+          "sharpe_ratio",
+          "sortino_ratio",
+          "calmar_ratio",
+          "max_drawdown_pct",
+          "win_rate_pct",
+          "profit_factor",
+          "total_trades",
+          "equity_curve",
+          "trades"
+        ],
+        "title": "BacktestResponse"
+      },
+      "BacktestTradeLog": {
+        "properties": {
+          "entry_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Entry Time"
+          },
+          "exit_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Exit Time"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "entry_price": {
+            "type": "number",
+            "title": "Entry Price"
+          },
+          "exit_price": {
+            "type": "number",
+            "title": "Exit Price"
+          },
+          "return_pct": {
+            "type": "number",
+            "title": "Return Pct"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_time",
+          "exit_time",
+          "side",
+          "entry_price",
+          "exit_price",
+          "return_pct",
+          "pnl",
+          "reason"
+        ],
+        "title": "BacktestTradeLog"
+      },
+      "CandleItem": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "open": {
+            "type": "number",
+            "title": "Open"
+          },
+          "high": {
+            "type": "number",
+            "title": "High"
+          },
+          "low": {
+            "type": "number",
+            "title": "Low"
+          },
+          "close": {
+            "type": "number",
+            "title": "Close"
+          },
+          "volume": {
+            "type": "number",
+            "title": "Volume"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "CandleItem"
+      },
+      "DriverImpact": {
+        "properties": {
+          "feature": {
+            "type": "string",
+            "title": "Feature"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "shap_value": {
+            "type": "number",
+            "title": "Shap Value"
+          },
+          "abs_impact": {
+            "type": "number",
+            "title": "Abs Impact"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "description",
+          "value",
+          "shap_value",
+          "abs_impact",
+          "direction"
+        ],
+        "title": "DriverImpact"
+      },
+      "EquityPoint": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "strategy_equity": {
+            "type": "number",
+            "title": "Strategy Equity"
+          },
+          "benchmark_equity": {
+            "type": "number",
+            "title": "Benchmark Equity"
+          },
+          "drawdown_pct": {
+            "type": "number",
+            "title": "Drawdown Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "strategy_equity",
+          "benchmark_equity",
+          "drawdown_pct"
+        ],
+        "title": "EquityPoint"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HorizonForecast": {
+        "properties": {
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "current_price": {
+            "type": "number",
+            "title": "Current Price"
+          },
+          "point_forecast": {
+            "type": "number",
+            "title": "Point Forecast"
+          },
+          "expected_return_pct": {
+            "type": "number",
+            "title": "Expected Return Pct"
+          },
+          "prob_up": {
+            "type": "number",
+            "title": "Prob Up"
+          },
+          "agreement_score": {
+            "type": "number",
+            "title": "Agreement Score"
+          },
+          "risk_score": {
+            "type": "integer",
+            "title": "Risk Score"
+          },
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "signal_level": {
+            "type": "integer",
+            "title": "Signal Level"
+          },
+          "confidence_level": {
+            "type": "string",
+            "title": "Confidence Level"
+          },
+          "low_confidence_flag": {
+            "type": "boolean",
+            "title": "Low Confidence Flag"
+          },
+          "interval_50": {
+            "$ref": "#/components/schemas/IntervalBand"
+          },
+          "interval_90": {
+            "$ref": "#/components/schemas/IntervalBand"
+          },
+          "quantiles": {
+            "$ref": "#/components/schemas/QuantilesDict"
+          },
+          "per_model_median": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Per Model Median"
+          }
+        },
+        "type": "object",
+        "required": [
+          "horizon",
+          "current_price",
+          "point_forecast",
+          "expected_return_pct",
+          "prob_up",
+          "agreement_score",
+          "risk_score",
+          "signal",
+          "signal_level",
+          "confidence_level",
+          "low_confidence_flag",
+          "interval_50",
+          "interval_90",
+          "quantiles",
+          "per_model_median"
+        ],
+        "title": "HorizonForecast"
+      },
+      "IntervalBand": {
+        "properties": {
+          "lower": {
+            "type": "number",
+            "title": "Lower"
+          },
+          "upper": {
+            "type": "number",
+            "title": "Upper"
+          },
+          "nominal_coverage": {
+            "type": "number",
+            "title": "Nominal Coverage"
+          },
+          "empirical_coverage": {
+            "type": "number",
+            "title": "Empirical Coverage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lower",
+          "upper",
+          "nominal_coverage",
+          "empirical_coverage"
+        ],
+        "title": "IntervalBand"
+      },
+      "LivePriceResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol",
+            "default": "BTCUSDT"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "change_24h_pct": {
+            "type": "number",
+            "title": "Change 24H Pct"
+          },
+          "high_24h": {
+            "type": "number",
+            "title": "High 24H"
+          },
+          "low_24h": {
+            "type": "number",
+            "title": "Low 24H"
+          },
+          "volume_24h": {
+            "type": "number",
+            "title": "Volume 24H"
+          },
+          "realized_volatility": {
+            "type": "number",
+            "title": "Realized Volatility"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "change_24h_pct",
+          "high_24h",
+          "low_24h",
+          "volume_24h",
+          "realized_volatility",
+          "timestamp"
+        ],
+        "title": "LivePriceResponse"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "remember_me": {
+            "type": "boolean",
+            "title": "Remember Me",
+            "default": false
+          },
+          "totp_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Totp Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "MarketHistoryResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol",
+            "default": "BTCUSDT"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/CandleItem"
+            },
+            "type": "array",
+            "title": "Candles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interval",
+          "count",
+          "candles"
+        ],
+        "title": "MarketHistoryResponse"
+      },
+      "MarketRegime": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "probabilities": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Probabilities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "confidence",
+          "probabilities"
+        ],
+        "title": "MarketRegime"
+      },
+      "OnChainMetricsResponse": {
+        "properties": {
+          "fastest_fee": {
+            "type": "number",
+            "title": "Fastest Fee"
+          },
+          "half_hour_fee": {
+            "type": "number",
+            "title": "Half Hour Fee"
+          },
+          "hour_fee": {
+            "type": "number",
+            "title": "Hour Fee"
+          },
+          "minimum_fee": {
+            "type": "number",
+            "title": "Minimum Fee"
+          },
+          "taker_buy_ratio": {
+            "type": "number",
+            "title": "Taker Buy Ratio"
+          },
+          "volume_momentum_24h": {
+            "type": "number",
+            "title": "Volume Momentum 24H"
+          },
+          "average_trade_size": {
+            "type": "number",
+            "title": "Average Trade Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fastest_fee",
+          "half_hour_fee",
+          "hour_fee",
+          "minimum_fee",
+          "taker_buy_ratio",
+          "volume_momentum_24h",
+          "average_trade_size"
+        ],
+        "title": "OnChainMetricsResponse"
+      },
+      "OrderBookLevel": {
+        "properties": {
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "quantity"
+        ],
+        "title": "OrderBookLevel"
+      },
+      "OrderBookResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol",
+            "default": "BTCUSDT"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "bids": {
+            "items": {
+              "$ref": "#/components/schemas/OrderBookLevel"
+            },
+            "type": "array",
+            "title": "Bids"
+          },
+          "asks": {
+            "items": {
+              "$ref": "#/components/schemas/OrderBookLevel"
+            },
+            "type": "array",
+            "title": "Asks"
+          },
+          "imbalance_ratio": {
+            "type": "number",
+            "title": "Imbalance Ratio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "bids",
+          "asks",
+          "imbalance_ratio"
+        ],
+        "title": "OrderBookResponse"
+      },
+      "PaperPortfolioResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "initial_capital": {
+            "type": "number",
+            "title": "Initial Capital"
+          },
+          "cash": {
+            "type": "number",
+            "title": "Cash"
+          },
+          "btc_balance": {
+            "type": "number",
+            "title": "Btc Balance"
+          },
+          "total_equity": {
+            "type": "number",
+            "title": "Total Equity"
+          },
+          "realized_pnl": {
+            "type": "number",
+            "title": "Realized Pnl"
+          },
+          "current_btc_price": {
+            "type": "number",
+            "title": "Current Btc Price"
+          },
+          "unrealized_pnl": {
+            "type": "number",
+            "title": "Unrealized Pnl"
+          },
+          "recent_trades": {
+            "items": {
+              "$ref": "#/components/schemas/PaperTradeResponse"
+            },
+            "type": "array",
+            "title": "Recent Trades"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "initial_capital",
+          "cash",
+          "btc_balance",
+          "total_equity",
+          "realized_pnl",
+          "current_btc_price",
+          "unrealized_pnl",
+          "recent_trades"
+        ],
+        "title": "PaperPortfolioResponse"
+      },
+      "PaperTradeCreate": {
+        "properties": {
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "side",
+          "amount"
+        ],
+        "title": "PaperTradeCreate"
+      },
+      "PaperTradeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "fee": {
+            "type": "number",
+            "title": "Fee"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "side",
+          "price",
+          "amount",
+          "value",
+          "fee",
+          "pnl",
+          "timestamp"
+        ],
+        "title": "PaperTradeResponse"
+      },
+      "PredictionExplanation": {
+        "properties": {
+          "narrative": {
+            "type": "string",
+            "title": "Narrative"
+          },
+          "top_drivers": {
+            "items": {
+              "$ref": "#/components/schemas/DriverImpact"
+            },
+            "type": "array",
+            "title": "Top Drivers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "narrative",
+          "top_drivers"
+        ],
+        "title": "PredictionExplanation"
+      },
+      "PredictionHistoryItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "current_price": {
+            "type": "number",
+            "title": "Current Price"
+          },
+          "point_forecast": {
+            "type": "number",
+            "title": "Point Forecast"
+          },
+          "actual_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Price"
+          },
+          "abs_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abs Error"
+          },
+          "is_scored": {
+            "type": "boolean",
+            "title": "Is Scored"
+          },
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "timestamp",
+          "horizon",
+          "current_price",
+          "point_forecast",
+          "actual_price",
+          "abs_error",
+          "is_scored",
+          "signal",
+          "model_version"
+        ],
+        "title": "PredictionHistoryItem"
+      },
+      "PredictionResponse": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "current_price": {
+            "type": "number",
+            "title": "Current Price"
+          },
+          "market_regime": {
+            "$ref": "#/components/schemas/MarketRegime"
+          },
+          "primary_signal": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Primary Signal"
+          },
+          "horizons": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HorizonForecast"
+            },
+            "type": "object",
+            "title": "Horizons"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/PredictionExplanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "timestamp",
+          "current_price",
+          "market_regime",
+          "primary_signal",
+          "horizons",
+          "explanation"
+        ],
+        "title": "PredictionResponse"
+      },
+      "QuantilesDict": {
+        "properties": {
+          "q05": {
+            "type": "number",
+            "title": "Q05"
+          },
+          "q25": {
+            "type": "number",
+            "title": "Q25"
+          },
+          "q50": {
+            "type": "number",
+            "title": "Q50"
+          },
+          "q75": {
+            "type": "number",
+            "title": "Q75"
+          },
+          "q95": {
+            "type": "number",
+            "title": "Q95"
+          }
+        },
+        "type": "object",
+        "required": [
+          "q05",
+          "q25",
+          "q50",
+          "q75",
+          "q95"
+        ],
+        "title": "QuantilesDict"
+      },
+      "RegisterRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "title": "Password"
+          },
+          "full_name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Full Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "full_name"
+        ],
+        "title": "RegisterRequest"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in"
+        ],
+        "title": "TokenResponse"
+      },
+      "TwoFactorSetupResponse": {
+        "properties": {
+          "secret": {
+            "type": "string",
+            "title": "Secret"
+          },
+          "qr_code_uri": {
+            "type": "string",
+            "title": "Qr Code Uri"
+          },
+          "recovery_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recovery Codes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "secret",
+          "qr_code_uri",
+          "recovery_codes"
+        ],
+        "title": "TwoFactorSetupResponse"
+      },
+      "TwoFactorVerifyRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "TwoFactorVerifyRequest"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified"
+          },
+          "two_factor_enabled": {
+            "type": "boolean",
+            "title": "Two Factor Enabled"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "role",
+          "is_active",
+          "is_verified",
+          "two_factor_enabled",
+          "created_at"
+        ],
+        "title": "UserResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/v1/auth/login"
+          }
+        }
+      }
+    }
+  }
+}

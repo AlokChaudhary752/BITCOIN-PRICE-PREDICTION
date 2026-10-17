@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  ml-and-backend:
+    name: Backend & ML Pipeline Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r packages/ml/requirements.txt
+          pip install -r apps/api/requirements.txt
+          pip install pytest pytest-asyncio pytest-playwright ruff
+
+      - name: Lint with Ruff
+        run: |
+          ruff check packages/ml apps/api
+
+      - name: Run ML Validation & Leakage Tests
+        run: |
+          pytest packages/ml/tests -v
+
+      - name: Run Backend API Test Suite
+        run: |
+          pytest apps/api/tests -v
+
+  frontend:
+    name: Web Frontend Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Type-Check and Build Production Bundle
+        working-directory: apps/web
+        run: npm run build
+
+  e2e:
+    name: Playwright End-to-End Suite
+    needs: [ml-and-backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python & Node
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install All Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r packages/ml/requirements.txt
+          pip install -r apps/api/requirements.txt
+          pip install pytest pytest-asyncio pytest-playwright playwright
+          playwright install --with-deps chromium
+          cd apps/web && npm ci
+
+      - name: Run E2E Tests
+        run: |
+          # Start API and Web servers in background
+          uvicorn apps.api.src.main:app --host 127.0.0.1 --port 8000 &
+          cd apps/web && npm run dev -- --host 127.0.0.1 --port 5173 &
+          sleep 5
+          pytest tests/test_stage4_auth_playwright.py -v
+          pytest tests/test_stage5_dashboard_playwright.py -v
+          pytest tests/test_stage6_advanced_views_playwright.py -v
