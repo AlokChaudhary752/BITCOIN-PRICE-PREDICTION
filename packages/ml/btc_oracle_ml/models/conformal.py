@@ -127,6 +127,19 @@ class ConformalCalibrator:
 
         return calibrated
 
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if "recent_scores_90" not in self.__dict__:
+            self.recent_scores_90 = []
+        if "recent_scores_50" not in self.__dict__:
+            self.recent_scores_50 = []
+        if "sliding_window" not in self.__dict__:
+            self.sliding_window = 720
+        if "nominal_90" not in self.__dict__:
+            self.nominal_90 = NOMINAL_COVERAGE_90
+        if "nominal_50" not in self.__dict__:
+            self.nominal_50 = NOMINAL_COVERAGE_50
+
     def update_online(
         self,
         y_realized: float,
@@ -134,6 +147,15 @@ class ConformalCalibrator:
         predicted_q95: float,
     ) -> None:
         """Sliding-window online update to track sudden non-stationary drift."""
+        if not hasattr(self, "recent_scores_90"):
+            self.recent_scores_90 = []
+        if not hasattr(self, "recent_scores_50"):
+            self.recent_scores_50 = []
+        if not hasattr(self, "sliding_window"):
+            self.sliding_window = 720
+        if not hasattr(self, "nominal_90"):
+            self.nominal_90 = NOMINAL_COVERAGE_90
+
         s90 = max(predicted_q05 - y_realized, y_realized - predicted_q95)
         self.recent_scores_90.append(float(s90))
         if len(self.recent_scores_90) > self.sliding_window:

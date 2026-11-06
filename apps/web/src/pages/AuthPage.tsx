@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle, Zap } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 
 export const AuthPage: React.FC = () => {
@@ -20,11 +20,26 @@ export const AuthPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [termsAccepted, setTermsAccepted] = useState(true);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isBypassing, setIsBypassing] = useState<boolean>(false);
 
-  const { login, register, error, clearError, isLoading } = useAuthStore();
+  const { login, register, error, clearError, isLoading, bypassLogin } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/dashboard";
+
+  const handleBypassLogin = async () => {
+    setIsBypassing(true);
+    setValidationError(null);
+    clearError();
+    try {
+      await bypassLogin();
+      navigate(from, { replace: true });
+    } catch {
+      navigate("/dashboard", { replace: true });
+    } finally {
+      setIsBypassing(false);
+    }
+  };
 
   // Password strength meter
   const getPasswordStrength = (pass: string) => {
@@ -182,12 +197,32 @@ export const AuthPage: React.FC = () => {
               <button
                 type="submit"
                 data-testid="login-submit"
-                disabled={isLoading}
+                disabled={isLoading || isBypassing}
                 className="w-full py-2.5 rounded-lg bg-gradient-to-r from-gold-500 to-amber-500 text-slate-950 font-bold text-xs tracking-wide flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-gold disabled:opacity-50 cursor-pointer mt-2"
               >
                 {isLoading ? "Signing in..." : "Enter Terminal"} <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>
+
+            {/* Direct Dashboard Bypass */}
+            <div className="relative my-4 flex items-center justify-center">
+              <div className="border-t border-border/60 w-full" />
+              <span className="bg-surface-card px-2.5 py-0.5 rounded text-[10px] uppercase font-mono text-slate-400 border border-border/60 tracking-wider absolute">
+                Quick Access
+              </span>
+            </div>
+
+            <button
+              type="button"
+              data-testid="bypass-login-btn"
+              onClick={handleBypassLogin}
+              disabled={isLoading || isBypassing}
+              className="w-full py-2.5 px-4 rounded-lg bg-gold-500/10 hover:bg-gold-500/20 border border-gold-500/40 hover:border-gold-500/70 text-gold-400 hover:text-gold-300 font-semibold text-xs tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-gold cursor-pointer group"
+            >
+              <Zap className="w-3.5 h-3.5 text-gold-400 group-hover:scale-110 transition-transform" />
+              <span>{isBypassing ? "Opening Dashboard..." : "Bypass Login (Direct Dashboard)"}</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-auto text-gold-500/70 group-hover:translate-x-0.5 transition-transform" />
+            </button>
 
             <div className="mt-6 pt-5 border-t border-border/60 text-center">
               <span className="text-xs text-slate-400">Don't have institutional credentials? </span>
@@ -327,12 +362,32 @@ export const AuthPage: React.FC = () => {
               <button
                 type="submit"
                 data-testid="signup-submit"
-                disabled={isLoading}
+                disabled={isLoading || isBypassing}
                 className="w-full py-2.5 rounded-lg bg-gradient-to-r from-gold-500 to-amber-500 text-slate-950 font-bold text-xs tracking-wide flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-gold disabled:opacity-50 cursor-pointer mt-2"
               >
                 {isLoading ? "Creating..." : "Initialize Account"} <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>
+
+            {/* Direct Dashboard Bypass */}
+            <div className="relative my-4 flex items-center justify-center">
+              <div className="border-t border-border/60 w-full" />
+              <span className="bg-surface-card px-2.5 py-0.5 rounded text-[10px] uppercase font-mono text-slate-400 border border-border/60 tracking-wider absolute">
+                Quick Access
+              </span>
+            </div>
+
+            <button
+              type="button"
+              data-testid="bypass-signup-btn"
+              onClick={handleBypassLogin}
+              disabled={isLoading || isBypassing}
+              className="w-full py-2.5 px-4 rounded-lg bg-gold-500/10 hover:bg-gold-500/20 border border-gold-500/40 hover:border-gold-500/70 text-gold-400 hover:text-gold-300 font-semibold text-xs tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-gold cursor-pointer group"
+            >
+              <Zap className="w-3.5 h-3.5 text-gold-400 group-hover:scale-110 transition-transform" />
+              <span>{isBypassing ? "Opening Dashboard..." : "Bypass Login (Direct Dashboard)"}</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-auto text-gold-500/70 group-hover:translate-x-0.5 transition-transform" />
+            </button>
 
             <div className="mt-5 pt-4 border-t border-border/60 text-center">
               <span className="text-xs text-slate-400">Already registered? </span>
