@@ -1,15 +1,18 @@
 # ==========================================
-# STAGE 0: Frontend Build
+# STAGE 0: Frontend Build (Debian GLIBC)
 # ==========================================
-FROM node:20-alpine AS web-builder
+FROM node:20-slim AS web-builder
 
-WORKDIR /build
-COPY apps/web/package*.json ./apps/web/
+WORKDIR /app
+
+# Copy root workspace and package manifests
+COPY package*.json ./
 COPY packages/shared ./packages/shared/
-WORKDIR /build/apps/web
+COPY apps/web ./apps/web/
+
+# Install dependencies using workspaces and build frontend
 RUN npm install
-COPY apps/web ./
-RUN npm run build
+RUN npm --prefix apps/web run build
 
 # ==========================================
 # STAGE 1: Python Builder
@@ -46,7 +49,7 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app \
+    PYTHONPATH=/app:/app/packages/ml \
     ENVIRONMENT=production
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -60,15 +63,18 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* && rm -
 # Copy application source
 COPY packages /app/packages
 COPY apps/api /app/apps/api
-COPY --from=web-builder /build/apps/web/dist /app/apps/web/dist
+COPY --from=web-builder /app/apps/web/dist /app/apps/web/dist
 
-# Create non-root user
+# Install ML package into Python environment
+RUN pip install --no-cache-dir -e /app/packages/ml
+
+# Create non-root user and ensure permissions
 RUN useradd -m -u 1000 oracle && chown -R oracle:oracle /app
 USER oracle
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/healthz || exit 1
 
-CMD ["python", "-m", "uvicorn", "apps.api.src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "python -m uvicorn apps.api.src.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

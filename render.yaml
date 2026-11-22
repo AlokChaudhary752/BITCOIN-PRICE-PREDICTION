@@ -12,8 +12,6 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: PORT
-        value: "8000"
       - key: DATABASE_URL
         value: sqlite+aiosqlite:///./btc_oracle.db
       - key: JWT_SECRET
