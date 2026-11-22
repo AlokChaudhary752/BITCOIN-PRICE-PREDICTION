@@ -6,6 +6,7 @@ Validates:
 3. Alerts CRUD via dashboard UI.
 4. Paper Portfolio live execution: executing 0.1 BTC BUY trade adjusts cash, BTC balance, and logs trade.
 """
+import time
 import uuid
 import requests
 from playwright.sync_api import sync_playwright
@@ -14,8 +15,23 @@ API_URL = "http://127.0.0.1:8000"
 WEB_URL = "http://127.0.0.1:5173"
 
 
+def wait_for_services():
+    """Wait for API and Web servers to be healthy."""
+    for _ in range(40):
+        try:
+            r_api = requests.get(f"{API_URL}/healthz", timeout=1)
+            r_web = requests.get(WEB_URL, timeout=1)
+            if r_api.status_code == 200 and r_web.status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(0.5)
+    return False
+
+
 def test_stage6_backtest_fixture_correctness():
     """Verify backtest engine against exact hand-computed fixture."""
+    assert wait_for_services(), f"Servers must be active at {API_URL} and {WEB_URL}"
     print("\n[Stage 6 Test 1] Verifying Backtest mathematical correctness vs hand-computed fixture...")
     payload = {
         "initial_capital": 100000.0,

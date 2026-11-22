@@ -90,8 +90,8 @@ jobs:
           PYTHONPATH: .
         run: |
           python -m uvicorn apps.api.src.main:app --host 127.0.0.1 --port 8000 &
-          npm run dev -- --host 127.0.0.1 --port 5173 &
-          sleep 8
+          npm --prefix apps/web run dev &
+          python -c "import time, urllib.request; [exit(0) for _ in range(40) if time.sleep(1) is None and all(urllib.request.urlopen(url, timeout=1).getcode() == 200 for url in ['http://127.0.0.1:8000/healthz', 'http://127.0.0.1:5173'])]" || true
           pytest tests/test_stage4_auth_playwright.py -v
           pytest tests/test_stage5_dashboard_playwright.py -v
           pytest tests/test_stage6_advanced_views_playwright.py -v

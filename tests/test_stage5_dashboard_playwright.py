@@ -9,13 +9,30 @@ Validates:
 """
 import time
 import uuid
+import requests
 from playwright.sync_api import sync_playwright
 
 API_URL = "http://127.0.0.1:8000"
 WEB_URL = "http://127.0.0.1:5173"
 
 
+def wait_for_services():
+    """Wait for API and Web servers to be healthy."""
+    for _ in range(40):
+        try:
+            r_api = requests.get(f"{API_URL}/healthz", timeout=1)
+            r_web = requests.get(WEB_URL, timeout=1)
+            if r_api.status_code == 200 and r_web.status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(0.5)
+    return False
+
+
 def test_stage5_dashboard_views_and_websocket_streaming():
+    assert wait_for_services(), f"Servers must be active at {API_URL} and {WEB_URL}"
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
