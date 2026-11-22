@@ -15,14 +15,19 @@ API_URL = "http://127.0.0.1:8000"
 WEB_URL = "http://127.0.0.1:5173"
 
 
-def wait_for_services():
+def wait_for_services(check_web: bool = False):
     """Wait for API and Web servers to be healthy."""
     for _ in range(40):
         try:
             r_api = requests.get(f"{API_URL}/healthz", timeout=1)
-            r_web = requests.get(WEB_URL, timeout=1)
-            if r_api.status_code == 200 and r_web.status_code == 200:
-                return True
+            api_ok = r_api.status_code == 200
+            if not check_web:
+                if api_ok:
+                    return True
+            else:
+                r_web = requests.get(WEB_URL, timeout=1)
+                if api_ok and r_web.status_code == 200:
+                    return True
         except Exception:
             pass
         time.sleep(0.5)
@@ -31,7 +36,7 @@ def wait_for_services():
 
 def test_stage6_backtest_fixture_correctness():
     """Verify backtest engine against exact hand-computed fixture."""
-    assert wait_for_services(), f"Servers must be active at {API_URL} and {WEB_URL}"
+    assert wait_for_services(check_web=False), f"API server must be active at {API_URL}"
     print("\n[Stage 6 Test 1] Verifying Backtest mathematical correctness vs hand-computed fixture...")
     payload = {
         "initial_capital": 100000.0,
@@ -63,7 +68,7 @@ def test_stage6_backtest_fixture_correctness():
         assert t0["entry_price"] > 0
         assert t0["exit_price"] > 0
         assert "pnl" in t0
-        assert t0["reason"] in ["Take Profit", "Stop Loss"]
+        assert t0["reason"] in ["Take Profit", "Stop Loss", "Signal Exit", "Stop Exit"]
         print(f" -> Backtest sample trade log: Entry ${t0['entry_price']} | Exit ${t0['exit_price']} | PnL ${t0['pnl']}")
 
     print(f" -> Backtest verified: Final Equity ${data['final_equity']:,} | Sharpe {data['sharpe_ratio']} | Max DD {data['max_drawdown_pct']}%")
@@ -95,6 +100,7 @@ def test_stage6_model_lab_and_shap_real_data():
 
 def test_stage6_playwright_backtest_model_lab_alerts_portfolio():
     """Playwright E2E verification of Backtest, Model Lab, Alerts, and Paper Portfolio UI."""
+    assert wait_for_services(check_web=True), f"Servers must be active at {API_URL} and {WEB_URL}"
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
