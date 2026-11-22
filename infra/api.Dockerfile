@@ -1,5 +1,18 @@
 # ==========================================
-# STAGE 1: Builder
+# STAGE 0: Frontend Build
+# ==========================================
+FROM node:20-alpine AS web-builder
+
+WORKDIR /build
+COPY apps/web/package*.json ./apps/web/
+COPY packages/shared ./packages/shared/
+WORKDIR /build/apps/web
+RUN npm install
+COPY apps/web ./
+RUN npm run build
+
+# ==========================================
+# STAGE 1: Python Builder
 # ==========================================
 FROM python:3.12-slim AS builder
 
@@ -47,6 +60,7 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* && rm -
 # Copy application source
 COPY packages /app/packages
 COPY apps/api /app/apps/api
+COPY --from=web-builder /build/apps/web/dist /app/apps/web/dist
 
 # Create non-root user
 RUN useradd -m -u 1000 oracle && chown -R oracle:oracle /app

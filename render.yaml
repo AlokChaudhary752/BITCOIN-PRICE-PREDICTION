@@ -1,0 +1,26 @@
+services:
+  # Institutional Bitcoin Probabilistic Forecasting Platform
+  # Complete All-in-One Deployment (Frontend SPA + FastAPI Backend + ML Serving Engine)
+  - type: web
+    name: btc-oracle
+    runtime: docker
+    dockerfilePath: infra/api.Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./btc_oracle.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "15"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: CORS_ORIGINS
+        value: "*"

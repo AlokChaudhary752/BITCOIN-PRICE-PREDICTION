@@ -4,9 +4,12 @@ Institutional Bitcoin Forecasting API.
 """
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request, Response, WebSocket
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 from apps.api.src.config import settings
@@ -132,3 +135,22 @@ app.include_router(forecast.router, prefix="/api/v1")
 app.include_router(analysis.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+
+# SERVE REACT FRONTEND (SPA) IN PRODUCTION / STANDALONE MODE
+dist_path = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
+if dist_path.exists():
+    assets_path = dist_path / "assets"
+    if assets_path.exists():
+        app.mount("/assets", StaticFiles(directory=assets_path), name="frontend-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        # Exclude API, WebSocket, Docs, and System Health endpoints
+        reserved_prefixes = ("api/", "ws/", "docs", "redoc", "openapi.json", "healthz", "readyz", "metrics")
+        if any(full_path.startswith(prefix) for prefix in reserved_prefixes):
+            raise HTTPException(status_code=404, detail="Not Found")
+        file_candidate = dist_path / full_path
+        if file_candidate.is_file():
+            return FileResponse(file_candidate)
+        return FileResponse(dist_path / "index.html")
+
